@@ -106,3 +106,5 @@ There are also a number of tools designed to run on your client desktop that are
 The *browseprinter* tool will help you find the Photonic3D server on your network, in case you have it installed a machine with a dynamic IP address and you don't know what what is.
 * Linux: Run `sudo browseprinter.sh` at the command line
 * Windows: Run `browseprinter.bat`
+
+V0.1.1
