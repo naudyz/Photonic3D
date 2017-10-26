@@ -314,7 +314,7 @@ public class PrinterService {
 			 SimulatedDisplay.NAME, 
 			 ConsoleCommPort.GCODE_RESPONSE_SIMULATION, 
 			 134, 75, 185);
-		configuration.getSlicingProfile().getSelectedInkConfig().setNumberOfFirstLayers(10);
+		configuration.getSlicingProfile().getSelectedInkConfig().setNumberOfFirstLayers(3);
 		configuration.getSlicingProfile().getSelectedInkConfig().setFirstLayerExposureTime(20000);
 		configuration.getSlicingProfile().getSelectedInkConfig().setExposureTime(8000);
 		configuration.getSlicingProfile().getSelectedInkConfig().setPercentageOfInkConsideredEmpty(10);
@@ -451,10 +451,10 @@ public class PrinterService {
 		machineConfig.setPlatformZSize(buildHeightMMZ);
 		
 		SlicingProfile slicingProfile = new SlicingProfile();
-		slicingProfile.setLiftDistance(5.0);
+		slicingProfile.setLiftDistance(8.0);
         // FIXME: 2017/9/26 zyd add for parameters -s
-        slicingProfile.setLiftFeedSpeed(50);
-        slicingProfile.setLiftRetractSpeed(100);
+        slicingProfile.setLiftFeedSpeed(100);
+        slicingProfile.setLiftRetractSpeed(500);
         // FIXME: 2017/9/26 zyd add for parameters -e
         slicingProfile.setDirection(BuildDirection.Bottom_Up);
 		try {
@@ -477,11 +477,11 @@ public class PrinterService {
 		
 		InkConfig ink = new InkConfig();
 		ink.setName("Default");
-		ink.setNumberOfFirstLayers(10);
+		ink.setNumberOfFirstLayers(3);
 		ink.setResinPriceL(65.0);
 		ink.setSliceHeight(0.1);
-		ink.setFirstLayerExposureTime(5000);
-		ink.setExposureTime(1000);
+		ink.setFirstLayerExposureTime(20000);
+		ink.setExposureTime(8000);
 
 		List<InkConfig> configs = new ArrayList<InkConfig>();
 		configs.add(ink);
@@ -511,7 +511,7 @@ public class PrinterService {
         // FIXME: 2017/9/18 zyd add for set Z travel -s
         slicingProfile.setZTravel(200);
         // FIXME: 2017/9/18 zyd add for set Z travel -e
-		slicingProfile.setParameterEnabled(false);
+		slicingProfile.setParameterEnabled(true);
 		slicingProfile.setDetectionEnabled(true);
 
 		currentConfiguration.setSlicingProfile(slicingProfile);

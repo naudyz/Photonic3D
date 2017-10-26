@@ -32,6 +32,9 @@ public class PrintJob {
 	private volatile double currentSliceCost = 0;
 	private volatile PrintFileProcessor<?,?> printFileProcessor;
 	private volatile String errorDescription;
+	// FIXME: 2017/10/26 zyd add for detect machine state -s
+	private volatile double estimateMaterialWeight;
+	// FIXME: 2017/10/26 zyd add for detect machine state -e
 	
 	//Overridables
 	private volatile boolean overrideExposureTime;
@@ -140,6 +143,15 @@ public class PrintJob {
 	public void setCurrentSliceTime(long currentSliceTime) {
 		this.currentSliceTime = currentSliceTime;
 	}
+
+	// FIXME: 2017/10/26 zyd add for detect machine state -s
+	public double getEstimateMaterialWeight() {
+		return estimateMaterialWeight;
+	}
+	public void setEstimateMaterialWeight(double estimateMaterialWeight) {
+		this.estimateMaterialWeight = estimateMaterialWeight;
+	}
+	// FIXME: 2017/10/26 zyd add for detect machine state -e
 	
 	public void setPrinter(Printer printer) {
 		this.printer = printer;

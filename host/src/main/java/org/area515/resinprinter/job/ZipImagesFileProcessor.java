@@ -59,7 +59,11 @@ public class ZipImagesFileProcessor extends CreationWorkshopSceneFileProcessor i
 
 			// FIXME: 2017/9/18 zyd add for detect machine state -s
 			File cfgFile = findConfigFile(printJob.getJobFile());
-			performDetectConfigFile(dataAid, cfgFile);
+			parseConfigFile(dataAid, cfgFile);
+			if (dataAid.slicingProfile.getDetectionEnabled())
+			{
+				performDetectMaterialWeight(dataAid);
+			}
 			while (true)
 			{
 				if (dataAid.slicingProfile.getDetectionEnabled())

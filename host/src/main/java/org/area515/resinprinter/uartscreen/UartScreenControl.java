@@ -38,6 +38,8 @@ import javax.imageio.ImageIO;
 
 public class UartScreenControl
 {
+    private String version = "0.1.1";
+
     //private int Page
     private Thread readThread;
     private Thread writeThread;
@@ -71,7 +73,6 @@ public class UartScreenControl
     private boolean parameterEnabled;
     private boolean detectionEnabled;
 
-    private String version = "0.1.1";
     private String update_path = "/udiskdir/update-dlp";
 //    private String update_path = "C:\\Users\\zyd\\udiskdir\\update-dlp";
     private Timer shutterTimer;

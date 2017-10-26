@@ -199,7 +199,29 @@ public abstract class AbstractPrintFileProcessor<G,E> implements PrintFileProces
 	}
 
 	// FIXME: 2017/9/18 zyd add for detect machine state -s
-	public void performDetectConfigFile(DataAid aid, File cfgFile) throws InappropriateDeviceException
+	public void performDetectMaterialWeight(DataAid aid) throws InappropriateDeviceException
+	{
+		if (aid == null) {
+			throw new IllegalStateException("initializeDataAid must be called before this method");
+		}
+
+		double estimateMaterialWeight = aid.printJob.getEstimateMaterialWeight();
+		double currentMaterialWeight = 0;
+		String receive = aid.printer.getGCodeControl().executeGCodeWithTemplating(aid.printJob, "M270", false);
+		Matcher matcher = GCODE_Weight_PATTERN.matcher(receive);
+		if (matcher.find())
+		{
+			currentMaterialWeight = Double.parseDouble(matcher.group(1));
+		}
+
+		if (estimateMaterialWeight > currentMaterialWeight)
+		{
+			System.out.println("out of material");
+			aid.printer.setStatus(JobStatus.PausedOutOfPrintMaterial);
+		}
+	}
+
+	public void parseConfigFile(DataAid aid, File cfgFile)
 	{
 		if (aid == null) {
 			throw new IllegalStateException("initializeDataAid must be called before this method");
@@ -210,32 +232,35 @@ public abstract class AbstractPrintFileProcessor<G,E> implements PrintFileProces
 			InputStream stream = new FileInputStream(cfgFile);
 			Properties properties = new Properties();
 			properties.load(stream);
-			double needMaterial = new Double(properties.getProperty("needMaterial", "0"));
-			double sliceHeight = new Double(properties.getProperty("sliceHeight", "0"));
-			int numberOfFirstLayers = new Integer(properties.getProperty("numberOfFirstLayers", "0"));
-			int firstLayerTime = new Integer(properties.getProperty("firstLayerTime", "0"));
-			int layerTime = new Integer(properties.getProperty("layerTime", "0"));
-			double liftDistance = new Double(properties.getProperty("liftDistance", "0"));
-			double liftFeedSpeed = new Double(properties.getProperty("liftFeedSpeed", "0"));
-			double liftRetractSpeed = new Double(properties.getProperty("liftRetractSpeed", "0"));
-			int delayTimeBeforeSolidify = new Integer(properties.getProperty("delayTimeBeforeSolidify", "0"));
-			int delayTimeAfterSolidify = new Integer(properties.getProperty("delayTimeAfterSolidify", "0"));
-			int delayTimeAsLiftedTop = new Integer(properties.getProperty("delayTimeAsLiftedTop", "0"));
-			int delayTimeForAirPump = new Integer(properties.getProperty("delayTimeForAirPump", "0"));
 
-			//读取重量
-			double currentMaterial = 0;
-			String receive = aid.printer.getGCodeControl().executeGCodeWithTemplating(aid.printJob, "M270", false);
-			Matcher matcher = GCODE_Weight_PATTERN.matcher(receive);
-			if (matcher.find())
-			{
-				currentMaterial = Double.parseDouble(matcher.group(1));
-			}
+			double estimateMaterialWeight = new Double(properties.getProperty("estimateMaterialWeight", "0"));
+			aid.printJob.setEstimateMaterialWeight(estimateMaterialWeight);
 
-			if (needMaterial > currentMaterial)
+			if (!aid.slicingProfile.getParameterEnabled())
 			{
-				System.out.println("out of material");
-				aid.printer.setStatus(JobStatus.PausedOutOfPrintMaterial);
+				double sliceHeight = new Double(properties.getProperty("sliceHeight", "0.2"));
+				int numberOfFirstLayers = new Integer(properties.getProperty("numberOfFirstLayers", "3"));
+				int firstLayerTime = new Integer(properties.getProperty("firstLayerTime", "20000"));
+				int layerTime = new Integer(properties.getProperty("layerTime", "8000"));
+				double liftDistance = new Double(properties.getProperty("liftDistance", "8"));
+				double liftFeedSpeed = new Double(properties.getProperty("liftFeedSpeed", "500"));
+				double liftRetractSpeed = new Double(properties.getProperty("liftRetractSpeed", "100"));
+				int delayTimeBeforeSolidify = new Integer(properties.getProperty("delayTimeBeforeSolidify", "0"));
+				int delayTimeAfterSolidify = new Integer(properties.getProperty("delayTimeAfterSolidify", "0"));
+				int delayTimeAsLiftedTop = new Integer(properties.getProperty("delayTimeAsLiftedTop", "0"));
+				int delayTimeForAirPump = new Integer(properties.getProperty("delayTimeForAirPump", "30000"));
+
+				aid.inkConfiguration.setSliceHeight(sliceHeight);
+				aid.inkConfiguration.setNumberOfFirstLayers(numberOfFirstLayers);
+				aid.inkConfiguration.setFirstLayerExposureTime(firstLayerTime);
+				aid.inkConfiguration.setExposureTime(layerTime);
+				aid.slicingProfile.setLiftDistance(liftDistance);
+				aid.slicingProfile.setLiftFeedSpeed(liftFeedSpeed);
+				aid.slicingProfile.setLiftRetractSpeed(liftRetractSpeed);
+				aid.slicingProfile.setDelayTimeBeforeSolidify(delayTimeBeforeSolidify);
+				aid.slicingProfile.setDelayTimeAfterSolidify(delayTimeAfterSolidify);
+				aid.slicingProfile.setDelayTimeAsLiftedTop(delayTimeAsLiftedTop);
+				aid.slicingProfile.setDelayTimeForAirPump(delayTimeForAirPump);
 			}
 		}
 		catch (IOException e)
