@@ -38,7 +38,7 @@ import javax.imageio.ImageIO;
 
 public class UartScreenControl
 {
-    private String version = "0.1.1";
+    private String version = "0.1.2";
 
     //private int Page
     private Thread readThread;

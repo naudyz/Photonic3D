@@ -35,7 +35,7 @@ public class SerialManager {
 	}
 	
 	/** Milliseconds to block while waiting for port open */
-	public static final int READ_TIME_OUT = 1000;
+	public static final int READ_TIME_OUT = 5000;
 	public static final int READ_CHITCHAT_TIME_OUT = 1500;
 	public static final int OPEN_TIME_OUT = 1000;
 	public static final int CPU_LIMITING_DELAY = 100;

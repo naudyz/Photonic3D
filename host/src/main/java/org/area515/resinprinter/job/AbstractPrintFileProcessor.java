@@ -319,7 +319,7 @@ public abstract class AbstractPrintFileProcessor<G,E> implements PrintFileProces
 			Trough_Resin_Type = matcher.group(1);
 		}
 
-		if (!Bottle_Resin_Type.equals(Trough_Resin_Type))
+		if (!Bottle_Resin_Type.equals(Trough_Resin_Type) || Bottle_Resin_Type.equals("") || Trough_Resin_Type.equals(""))
 		{
 			aid.printer.setStatus(JobStatus.PausedUnconformableMaterial);
 			return;
