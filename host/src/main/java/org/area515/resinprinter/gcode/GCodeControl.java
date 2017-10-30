@@ -295,6 +295,11 @@ public abstract class GCodeControl {
         return sendGcode("G28\r\n");
     }
 
+	// FIXME: 2017/10/26 zyd add for execute query temperature -s
+	public String executeQueryTemperature() {
+		return sendGcode("M105\r\n");
+	}
+	// FIXME: 2017/10/26 zyd add for execute query temperature -e
 	// FIXME: 2017/9/20 zyd add for execute shutter -s
 	public String executeShutterOn() {
 		return sendGcode("M106 S255\r\n");

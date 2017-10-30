@@ -103,8 +103,8 @@ public class ConvertSVGToPNG
     @Test
     public void transformAndCopy()
     {
-        File pngFile = new File("D:\\Users\\zyd\\Desktop\\printFile\\66.png");
-        File svgFile = new File("D:\\Users\\zyd\\Desktop\\printFile\\66.svg");
+        File pngFile = new File("D:\\Users\\zyd\\Desktop\\printFile\\0.png");
+        File svgFile = new File("D:\\Users\\zyd\\Desktop\\printFile\\0.svg");
         PNGTranscoder t = new PNGTranscoder();
 
         try
@@ -117,8 +117,8 @@ public class ConvertSVGToPNG
             transcoderHints.put(ImageTranscoder.KEY_XML_PARSER_VALIDATING, Boolean.FALSE);
             transcoderHints.put(ImageTranscoder.KEY_WIDTH, new Float(2560));
             transcoderHints.put(ImageTranscoder.KEY_HEIGHT, new Float(1600));
-//            transcoderHints.put(ImageTranscoder.KEY_FORCE_TRANSPARENT_WHITE, Boolean.TRUE);
-//            transcoderHints.put(ImageTranscoder.KEY_BACKGROUND_COLOR, Color.black);
+            transcoderHints.put(ImageTranscoder.KEY_FORCE_TRANSPARENT_WHITE, Boolean.TRUE);
+            transcoderHints.put(ImageTranscoder.KEY_BACKGROUND_COLOR, Color.black);
 
             t.setTranscodingHints(transcoderHints);
 

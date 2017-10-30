@@ -71,6 +71,7 @@ public class TestGCodeTemplating {
 		Pattern GCODE_Door_Limit_PATTERN = Pattern.compile("\\s*Door_Limit:([H,L]).*");
 		Pattern GCODE_M114_RESP_PATTERN = Pattern.compile("\\s*.*Z:(-?\\d+\\.\\d+).*");
 		Pattern GCODE_Led_Temperature_PATTERN = Pattern.compile("\\s*Led_Limit:([H,L]).*");
+		Pattern GCODE_Temperature_PATTERN = Pattern.compile("\\s*T:\\s*(-?[\\d\\.]+).*B:(-?[\\d\\.]+).*");
 		str = "Weight:1.2g";
 		str = "Liquid_Level:H";
 		str = "Bottle_Resin_Type:200";
@@ -81,10 +82,11 @@ public class TestGCodeTemplating {
 		str = "ok\n" +
 				"Door_Limit:H\n" +
 				"cmd_comp\n";
-		Matcher matcher = GCODE_Door_Limit_PATTERN.matcher(str);
+		str = "T:25.00 /0 B:24.03 /0 B@:0 @:0";
+		Matcher matcher = GCODE_Temperature_PATTERN.matcher(str);
 		if (matcher.find())
 		{
-			System.out.println(matcher.group(1));
+			System.out.println(matcher.group(1)+" "+matcher.group(2));
 		}
 	}
 	// FIXME: 2017/9/18 zyd add for test gcode -e

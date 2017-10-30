@@ -134,6 +134,7 @@ public class UartScreenControl
     private char addr_txt_networkSsid = 0x13A0;
     private char addr_txt_networkPsk = 0x13C0;
     private char addr_txt_material_weight = 0x1400;
+    private char addr_txt_led_temperature = 0x1410;
     private char addr_txt_admin_password = 0x1500;
     private char[] addr_txt_parameters = {0x1600, 0x1610, 0x1620, 0x1630, 0x1640, 0x1650, 0x1660, 0x1670, 0x1680, 0x1690};
 
@@ -863,8 +864,10 @@ public class UartScreenControl
                     string = new String(new char[] {0x8231, 0x95E8, 0x6253, 0x5F00});//舱门打开
                 else if (status == JobStatus.PausedLedOverTemperature)
                     string = new String(new char[] {0x706F, 0x677F, 0x6E29, 0x5EA6, 0x8FC7, 0x9AD8});//灯板温度过高
-                else if (status == JobStatus.PausedOutOfPrintMaterial)
-                    string = new String(new char[] {0x7F3A, 0x6599});//缺料
+                else if (status == JobStatus.PausedGrooveOutOfMaterial)
+                    string = new String(new char[] {0x6599, 0x69FD, 0x7F3A, 0x6599});//料槽缺料
+                else if (status == JobStatus.PausedBottleOutOfMaterial)
+                    string = new String(new char[] {0x6599, 0x74F6, 0x7F3A, 0x6599});//料瓶缺料
 
                 writeText(addr_txt_machineStatus, String.format("%-16s", string).getBytes("GBK"));
                 if (status == JobStatus.Printing)
@@ -1177,24 +1180,20 @@ public class UartScreenControl
         int key_value;
         key_value = payload[8];
 
-        if (key_value == 0x00)
-        {
-            //读取重量
-            double materialWeight = 0;
-            String receive = getPrinter().getGCodeControl().executeNetWeight();
-            Pattern GCODE_Weight_PATTERN = Pattern.compile("\\s*Weight:\\s*(-?[\\d\\.]+).*");
-            Matcher matcher = GCODE_Weight_PATTERN.matcher(receive);
-            if (matcher.find())
-            {
-                materialWeight = Double.parseDouble(matcher.group(1));
-            }
-            writeText(addr_txt_material_weight, String.format("%-16s", String.format("%.2f", materialWeight)).getBytes());
-        }
-        else if (key_value == 0x01)
+        if (key_value == 0x01)
         {
             getPrinter().getGCodeControl().executeNetWeight();
         }
-
+        //读取重量
+        double materialWeight = 0;
+        String receive = getPrinter().getGCodeControl().executeMaterialWeight();
+        Pattern GCODE_Weight_PATTERN = Pattern.compile("\\s*Weight:\\s*(-?[\\d\\.]+).*");
+        Matcher matcher = GCODE_Weight_PATTERN.matcher(receive);
+        if (matcher.find())
+        {
+            materialWeight = Double.parseDouble(matcher.group(1));
+        }
+        writeText(addr_txt_material_weight, String.format("%-16s", String.format("%.2f", materialWeight)).getBytes());
     }
 
     private void action_control(byte[] payload)
@@ -1205,40 +1204,52 @@ public class UartScreenControl
         int key_value;
         key_value = payload[8];
 
-        if (key_value == 0x00) //Z轴上移
+        if (key_value == 0x00) //进入控制页
+        {
+            double temperature = 0;
+            String receive = getPrinter().getGCodeControl().executeQueryTemperature();
+            Pattern GCODE_Temperature_PATTERN = Pattern.compile("\\s*T:\\s*(-?[\\d\\.]+).*B:(-?[\\d\\.]+).*");
+            Matcher matcher = GCODE_Temperature_PATTERN.matcher(receive);
+            if (matcher.find())
+            {
+                temperature = Double.parseDouble(matcher.group(2));
+            }
+            writeText(addr_txt_led_temperature, String.format("%-16s", String.format("%.1f", temperature)).getBytes());
+        }
+        else if (key_value == 0x01) //Z轴上移
         {
             getPrinter().getGCodeControl().executeSetRelativePositioning();
             getPrinter().getGCodeControl().sendGcode("G1 Z1 F1000");
             getPrinter().getGCodeControl().executeSetAbsolutePositioning();
         }
-        else if (key_value == 0x01) //Z轴下移
+        else if (key_value == 0x02) //Z轴下移
         {
             getPrinter().getGCodeControl().executeSetRelativePositioning();
             getPrinter().getGCodeControl().sendGcode("G1 Z-1 F1000");
             getPrinter().getGCodeControl().executeSetAbsolutePositioning();
         }
-        else if (key_value == 0x02) //Z轴归零
+        else if (key_value == 0x03) //Z轴归零
         {
             getPrinter().getGCodeControl().executeZHome();
         }
-        else if (key_value == 0x03) //Z轴下移到底部
+        else if (key_value == 0x04) //Z轴下移到底部
         {
             getPrinter().getGCodeControl().executeSetAbsolutePositioning();
             getPrinter().getGCodeControl().sendGcode("G1 Z0 F1000");
         }
-        else if (key_value == 0x04) //图像输出
+        else if (key_value == 0x05) //图像输出
         {
             showImage("/opt/cwh/3DTALK.png");
         }
-        else if (key_value == 0x05) //全屏白色
+        else if (key_value == 0x06) //全屏白色
         {
             showImage("/opt/cwh/WHITE.png");
         }
-        else if (key_value == 0x06) //图像关闭
+        else if (key_value == 0x07) //图像关闭
         {
             showImage(null);
         }
-        else if (key_value == 0x07)
+        else if (key_value == 0x08)
         {
             getPrinter().getGCodeControl().executeShutterOn();
             if (shutterTimer != null)
@@ -1256,7 +1267,7 @@ public class UartScreenControl
                 }
             }, 40000);
         }
-        else if (key_value == 0x08)
+        else if (key_value == 0x09)
         {
             if (shutterTimer != null)
             {
@@ -1265,11 +1276,11 @@ public class UartScreenControl
             }
             getPrinter().getGCodeControl().executeShutterOff();
         }
-        else if (key_value == 0x09)
+        else if (key_value == 0x0A)
         {
             getPrinter().getGCodeControl().executeWaterPumpOn();
         }
-        else if (key_value == 0x0A)
+        else if (key_value == 0x0B)
         {
             getPrinter().getGCodeControl().executeWaterPumpOff();
         }

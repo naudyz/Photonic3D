@@ -13,6 +13,8 @@ public enum JobStatus {
 	PausedUnconformableMaterial,
 	PausedDoorOpened,
 	PausedLedOverTemperature,
+	PausedGrooveOutOfMaterial,
+	PausedBottleOutOfMaterial,
 	// FIXME: 2017/9/25 zyd add for the reason of paused -e
 	PausedOutOfPrintMaterial,
 	PausedWithWarning;
@@ -24,6 +26,8 @@ public enum JobStatus {
 				this == JobStatus.PausedUnconformableMaterial ||
 				this == JobStatus.PausedDoorOpened ||
 				this == JobStatus.PausedLedOverTemperature ||
+				this == JobStatus.PausedGrooveOutOfMaterial ||
+				this == JobStatus.PausedBottleOutOfMaterial ||
 				// FIXME: 2017/9/25 zyd add for the reason of paused -e
 				this == JobStatus.PausedOutOfPrintMaterial ||
 				this == JobStatus.PausedWithWarning ||
@@ -37,6 +41,8 @@ public enum JobStatus {
 				this == JobStatus.PausedUnconformableMaterial ||
 				this == JobStatus.PausedDoorOpened ||
 				this == JobStatus.PausedLedOverTemperature ||
+				this == JobStatus.PausedGrooveOutOfMaterial ||
+				this == JobStatus.PausedBottleOutOfMaterial ||
 				// FIXME: 2017/9/25 zyd add for the reason of paused -e
 				this == JobStatus.PausedOutOfPrintMaterial ||
 				this == JobStatus.PausedWithWarning;
@@ -48,6 +54,8 @@ public enum JobStatus {
 				this == JobStatus.PausedUnconformableMaterial ||
 				this == JobStatus.PausedDoorOpened ||
 				this == JobStatus.PausedLedOverTemperature ||
+				this == JobStatus.PausedGrooveOutOfMaterial ||
+				this == JobStatus.PausedBottleOutOfMaterial ||
 				// FIXME: 2017/9/25 zyd add for the reason of paused -e
 				this == JobStatus.PausedOutOfPrintMaterial ||
 				this == JobStatus.PausedWithWarning;

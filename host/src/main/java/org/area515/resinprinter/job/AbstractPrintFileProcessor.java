@@ -216,8 +216,8 @@ public abstract class AbstractPrintFileProcessor<G,E> implements PrintFileProces
 
 		if (estimateMaterialWeight > currentMaterialWeight)
 		{
-			System.out.println("out of material");
-			aid.printer.setStatus(JobStatus.PausedOutOfPrintMaterial);
+			System.out.println("bottle out of material");
+			aid.printer.setStatus(JobStatus.PausedBottleOutOfMaterial);
 		}
 	}
 
@@ -238,7 +238,7 @@ public abstract class AbstractPrintFileProcessor<G,E> implements PrintFileProces
 
 			if (!aid.slicingProfile.getParameterEnabled())
 			{
-				double sliceHeight = new Double(properties.getProperty("sliceHeight", "0.2"));
+				double sliceHeight = new Double(properties.getProperty("sliceHeight", "0.1"));
 				int numberOfFirstLayers = new Integer(properties.getProperty("numberOfFirstLayers", "3"));
 				int firstLayerTime = new Integer(properties.getProperty("firstLayerTime", "20000"));
 				int layerTime = new Integer(properties.getProperty("layerTime", "8000"));
@@ -342,7 +342,7 @@ public abstract class AbstractPrintFileProcessor<G,E> implements PrintFileProces
 			matcher = GCODE_Liquid_Level_PATTERN.matcher(receive);
 			if (matcher.find() && matcher.group(1).equals("L"))
 			{
-				aid.printer.setStatus(JobStatus.PausedOutOfPrintMaterial);
+				aid.printer.setStatus(JobStatus.PausedGrooveOutOfMaterial);
 				return;
 			}
 		}
