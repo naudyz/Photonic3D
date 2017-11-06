@@ -502,11 +502,14 @@ public class PrinterService {
 		slicingProfile.setFlipX(false);
 		slicingProfile.setFlipY(true);
 
+		// FIXME: 2017/11/6 zyd add for increase exposure time if the job has been paused -s
+		slicingProfile.setResumeLayerExposureTime(10000);
+		// FIXME: 2017/11/6 zyd add for increase exposure time if the job has been paused -e
 		// FIXME: 2017/9/15 zyd add for set delay time -s
 		slicingProfile.setDelayTimeBeforeSolidify(1000);
 		slicingProfile.setDelayTimeAfterSolidify(1000);
 		slicingProfile.setDelayTimeAsLiftedTop(1000);
-		slicingProfile.setDelayTimeForAirPump(30000);
+		slicingProfile.setDelayTimeForAirPump(60);
 		// FIXME: 2017/9/15 zyd add for set delay time -e
         // FIXME: 2017/9/18 zyd add for set Z travel -s
         slicingProfile.setZTravel(200);

@@ -3,7 +3,6 @@ package org.area515.resinprinter.uartscreen;
 import org.area515.resinprinter.job.JobStatus;
 import org.area515.resinprinter.job.PrintJob;
 import org.area515.resinprinter.network.WirelessNetwork;
-import org.area515.resinprinter.notification.NotificationManager;
 import org.area515.resinprinter.printer.Printer;
 import org.area515.resinprinter.server.HostProperties;
 import org.area515.resinprinter.server.Main;
@@ -19,7 +18,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -38,15 +36,13 @@ import javax.imageio.ImageIO;
 
 public class UartScreenControl
 {
-    private String version = "0.1.2";
+    private String version = "0.1.3";
 
     //private int Page
     private Thread readThread;
     private Thread writeThread;
-    private Thread testThread;
     private volatile boolean isRead_stop = false;
     private volatile boolean isWrite_stop = false;
-    private volatile boolean isTest_stop = false;
 
     private Printer printer;
     private BlockingQueue<byte[]> writeQueue;
@@ -54,7 +50,7 @@ public class UartScreenControl
     private int cur_file_page = 0;
     private String cur_file_dir = null;
 
-    List<WirelessNetwork> network_list = null;
+    private List<WirelessNetwork> network_list = null;
     private int cur_network_selected = -1;
     private int cur_network_page = 0;
     private String network_ssid;
@@ -63,6 +59,7 @@ public class UartScreenControl
     private int numberOfFirstLayers;
     private int firstLayerTime;
     private int layerTime;
+    private int resumeLayerTime;
     private double liftDistance;
     private double liftFeedSpeed;
     private double liftRetractSpeed;
@@ -86,60 +83,60 @@ public class UartScreenControl
     private int printCurrentLayer = 0;
     private int printTotalLayers = 0;
     private long printedTime = 0;
-    /***********************************/
+    /*****************machine status******************/
 
     /*****************uart screen address******************/
-    private int pageLoading = 0;
-    private int pageUpdating = 1;
-    private int pageUpdated = 2;
-    private int pageMain = 7;
-    private int pageLocalFile = 8;
-    private int pageUdiskFile = 9;
-    private int pageSettings = 10;
-    private int pageAbout = 11;
-    private int pageNetworks = 12;
-    private int pageNetworkEdit = 13;
-    private int pageAdminSetting = 17;
+    private static final int pageLoading = 0;
+    private static final int pageUpdating = 1;
+    private static final int pageUpdated = 2;
+    private static final int pageMain = 7;
+    private static final int pageLocalFile = 8;
+    private static final int pageUdiskFile = 9;
+    private static final int pageSettings = 10;
+    private static final int pageAbout = 11;
+    private static final int pageNetworks = 12;
+    private static final int pageNetworkEdit = 13;
+    private static final int pageAdminSetting = 17;
 
-    private char addr_btn_fileList = 0x0002;
-    private char addr_btn_fileSel = 0x0003;
-    private char addr_btn_filePaging = 0x0004;
-    private char addr_btn_copy_or_delete = 0x0005;
-    private char addr_btn_print_ctrl = 0x0006;
-    private char addr_btn_network = 0x0007;
-    private char addr_btn_material = 0x0008;
-    private char addr_btn_control = 0x0009;
-    private char addr_btn_parameters = 0x000A;
-    private char addr_btn_about = 0x000D;
-    private char addr_btn_clear_lifeTime = 0x000E;
+    private static final char addr_btn_fileList = 0x0002;
+    private static final char addr_btn_fileSel = 0x0003;
+    private static final char addr_btn_filePaging = 0x0004;
+    private static final char addr_btn_copy_or_delete = 0x0005;
+    private static final char addr_btn_print_ctrl = 0x0006;
+    private static final char addr_btn_network = 0x0007;
+    private static final char addr_btn_material = 0x0008;
+    private static final char addr_btn_control = 0x0009;
+    private static final char addr_btn_parameters = 0x000A;
+    private static final char addr_btn_about = 0x000D;
+    private static final char addr_btn_clear_lifeTime = 0x000E;
 
-    private char[] addr_icon_prog = {0x0100, 0x0101, 0x0102, 0x0103, 0x0104};
-    private char addr_icon_pause = 0x0110;
-    private char addr_icon_parameter_enabled = 0x0120;
-    private char addr_icon_detection_enabled = 0x0121;
+    private static final char[] addr_icon_prog = {0x0100, 0x0101, 0x0102, 0x0103, 0x0104};
+    private static final char addr_icon_pause = 0x0110;
+    private static final char addr_icon_parameter_enabled = 0x0120;
+    private static final char addr_icon_detection_enabled = 0x0121;
 
-    private char addr_txt_ipAddress = 0x1000;
-    private char addr_txt_machineStatus = 0x1010;
-    private char addr_txt_printFileName = 0x1020;
-    private char addr_txt_printFileSize = 0x1040;
-    private char addr_txt_printProgress = 0x1050;
-    private char addr_txt_layers = 0x1060;
-    private char addr_txt_printedTime = 0x1070;
-    private char[] addr_txt_fileList = {0x1100, 0x1120, 0x1140, 0x1160, 0x1180};
-    private char addr_txt_filePage = 0x11A0;
-    private char addr_txt_version = 0x1200;
-    private char addr_txt_lifetime_led = 0x1210;
-    private char addr_txt_lifetime_screen = 0x1220;
-    private char[] addr_txt_network_List = {0x1300, 0x1320, 0x1340, 0x1360, 0x1380};
-    private char addr_txt_networkSsid = 0x13A0;
-    private char addr_txt_networkPsk = 0x13C0;
-    private char addr_txt_material_weight = 0x1400;
-    private char addr_txt_led_temperature = 0x1410;
-    private char addr_txt_admin_password = 0x1500;
-    private char[] addr_txt_parameters = {0x1600, 0x1610, 0x1620, 0x1630, 0x1640, 0x1650, 0x1660, 0x1670, 0x1680, 0x1690};
+    private static final char addr_txt_ipAddress = 0x1000;
+    private static final char addr_txt_machineStatus = 0x1010;
+    private static final char addr_txt_printFileName = 0x1020;
+    private static final char addr_txt_printFileSize = 0x1040;
+    private static final char addr_txt_printProgress = 0x1050;
+    private static final char addr_txt_layers = 0x1060;
+    private static final char addr_txt_printedTime = 0x1070;
+    private static final char[] addr_txt_fileList = {0x1100, 0x1120, 0x1140, 0x1160, 0x1180};
+    private static final char addr_txt_filePage = 0x11A0;
+    private static final char addr_txt_version = 0x1200;
+    private static final char addr_txt_lifetime_led = 0x1210;
+    private static final char addr_txt_lifetime_screen = 0x1220;
+    private static final char[] addr_txt_network_List = {0x1300, 0x1320, 0x1340, 0x1360, 0x1380};
+    private static final char addr_txt_networkSsid = 0x13A0;
+    private static final char addr_txt_networkPsk = 0x13C0;
+    private static final char[] addr_txt_material = {0x1400, 0x1410, 0x1420, 0x1430, 0x1440, 0x1450, 0x1460};
+    private static final char addr_txt_led_temperature = 0x1500;
+    private static final char addr_txt_admin_password = 0x1600;
+    private static final char[] addr_txt_parameters = {0x1700, 0x1710, 0x1720, 0x1730, 0x1740, 0x1750, 0x1760, 0x1770, 0x1780, 0x1790, 0x17A0};
 
-    private char[] desc_txt_fileList = {0x4003, 0x4023, 0x4043, 0x4063, 0x4083};
-    private char[] desc_txt_network_list = {0x4103, 0x4123, 0x4143, 0x4163, 0x4183};
+    private static final char[] desc_txt_fileList = {0x4003, 0x4023, 0x4043, 0x4063, 0x4083};
+    private static final char[] desc_txt_network_list = {0x4103, 0x4123, 0x4143, 0x4163, 0x4183};
     /***********************************/
 
     public UartScreenControl(Printer printer)
@@ -162,6 +159,12 @@ public class UartScreenControl
                 {
                     try
                     {
+                        if (getPrinter().getStatus().isNotReady())
+                        {
+                            Thread.sleep(100);
+                            continue;
+                        }
+
                         receive = IOUtilities.read(getPrinter().getUartScreenSerialPort(), 2000, 10);
                         if (receive == null || receive.length < 9)
                             continue;
@@ -236,47 +239,10 @@ public class UartScreenControl
         writeThread.start();
     }
 
-    private void startTestThread()
-    {
-        testThread = new Thread(new Runnable()
-        {
-            @Override
-            public void run()
-            {
-                String response;
-//                Main.GLOBAL_EXECUTOR.submit(new Runnable()
-//                {
-//                    @Override
-//                    public void run()
-//                    {
-//                        System.out.println("executor");
-//                    }
-//                });
-                while (!isTest_stop)
-                {
-                    try
-                    {
-                        //response = getPrinter().getGCodeControl().sendGcode("M99");
-                        //System.out.println("response 0: "+response);
-                        //response = getPrinter().getGCodeControl().sendGcode("M98");
-                        //System.out.println("response 1: "+response);
-                        //NotificationManager.sendMessage("test");
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e)
-                    {
-                        System.out.println(e.toString());
-                    }
-                }
-            }
-        });
-        testThread.start();
-    }
-
     public void start()
     {
         startReadThread();
         startWriteThread();
-        startTestThread();
 
         Main.GLOBAL_EXECUTOR.submit(new Runnable()
         {
@@ -294,7 +260,6 @@ public class UartScreenControl
                     getIpAddress();
                     setVersion(version);
                 }
-                return;
             }
         });
     }
@@ -303,7 +268,6 @@ public class UartScreenControl
     {
         isRead_stop = true;
         isWrite_stop = true;
-        isTest_stop = true;
         try
         {
             readThread.join();
@@ -370,6 +334,21 @@ public class UartScreenControl
             str += String.format("0x%02x,", b);
         }
         System.out.println(str);
+    }
+
+    public void setError(JobStatus status)
+    {
+        try
+        {
+            if (status == JobStatus.ErrorScreen)
+                writeText(addr_txt_machineStatus, String.format("%-16s", new String(new char[] {0x5C4F, 0x5E55, 0x9519, 0x8BEF})).getBytes("GBK"));
+            else if (status == JobStatus.ErrorControlBoard)
+                writeText(addr_txt_machineStatus, String.format("%-16s", new String(new char[] {0x63A7, 0x5236, 0x7248, 0x9519, 0x8BEF})).getBytes("GBK"));
+            while (!writeQueue.isEmpty())
+                Thread.sleep(100);
+        }
+        catch (UnsupportedEncodingException | InterruptedException e)
+        {}
     }
 
     private List<String> getPrintableList(String whichDir)
@@ -699,6 +678,7 @@ public class UartScreenControl
         numberOfFirstLayers = getPrinter().getConfiguration().getSlicingProfile().getSelectedInkConfig().getNumberOfFirstLayers();
         firstLayerTime = getPrinter().getConfiguration().getSlicingProfile().getSelectedInkConfig().getFirstLayerExposureTime();
         layerTime = getPrinter().getConfiguration().getSlicingProfile().getSelectedInkConfig().getExposureTime();
+        resumeLayerTime = getPrinter().getConfiguration().getSlicingProfile().getResumeLayerExposureTime();
         liftDistance = getPrinter().getConfiguration().getSlicingProfile().getLiftDistance();
         liftFeedSpeed = getPrinter().getConfiguration().getSlicingProfile().getLiftFeedSpeed();
         liftRetractSpeed = getPrinter().getConfiguration().getSlicingProfile().getLiftRetractSpeed();
@@ -712,13 +692,14 @@ public class UartScreenControl
         writeText(addr_txt_parameters[0], String.format("%d", numberOfFirstLayers).getBytes());
         writeText(addr_txt_parameters[1], String.format("%d", firstLayerTime).getBytes());
         writeText(addr_txt_parameters[2], String.format("%d", layerTime).getBytes());
-        writeText(addr_txt_parameters[3], String.format("%.2f", liftDistance).getBytes());
-        writeText(addr_txt_parameters[4], String.format("%.2f", liftFeedSpeed).getBytes());
-        writeText(addr_txt_parameters[5], String.format("%.2f", liftRetractSpeed).getBytes());
-        writeText(addr_txt_parameters[6], String.format("%d", delayTimeBeforeSolidify).getBytes());
-        writeText(addr_txt_parameters[7], String.format("%d", delayTimeAfterSolidify).getBytes());
-        writeText(addr_txt_parameters[8], String.format("%d", delayTimeAsLiftedTop).getBytes());
-        writeText(addr_txt_parameters[9], String.format("%d", delayTimeForAirPump).getBytes());
+        writeText(addr_txt_parameters[3], String.format("%d", resumeLayerTime).getBytes());
+        writeText(addr_txt_parameters[4], String.format("%.2f", liftDistance).getBytes());
+        writeText(addr_txt_parameters[5], String.format("%.2f", liftFeedSpeed).getBytes());
+        writeText(addr_txt_parameters[6], String.format("%.2f", liftRetractSpeed).getBytes());
+        writeText(addr_txt_parameters[7], String.format("%d", delayTimeBeforeSolidify).getBytes());
+        writeText(addr_txt_parameters[8], String.format("%d", delayTimeAfterSolidify).getBytes());
+        writeText(addr_txt_parameters[9], String.format("%d", delayTimeAsLiftedTop).getBytes());
+        writeText(addr_txt_parameters[10], String.format("%d", delayTimeForAirPump).getBytes());
         if (parameterEnabled)
             writeText(addr_icon_parameter_enabled, new byte[] {0x00, 67});
         else
@@ -734,6 +715,7 @@ public class UartScreenControl
         getPrinter().getConfiguration().getSlicingProfile().getSelectedInkConfig().setNumberOfFirstLayers(numberOfFirstLayers);
         getPrinter().getConfiguration().getSlicingProfile().getSelectedInkConfig().setFirstLayerExposureTime(firstLayerTime);
         getPrinter().getConfiguration().getSlicingProfile().getSelectedInkConfig().setExposureTime(layerTime);
+        getPrinter().getConfiguration().getSlicingProfile().setResumeLayerExposureTime(resumeLayerTime);
         getPrinter().getConfiguration().getSlicingProfile().setLiftDistance(liftDistance);
         getPrinter().getConfiguration().getSlicingProfile().setLiftFeedSpeed(liftFeedSpeed);
         getPrinter().getConfiguration().getSlicingProfile().setLiftRetractSpeed(liftRetractSpeed);
@@ -784,6 +766,9 @@ public class UartScreenControl
         {
             if (filePath != null && BasicUtillities.isExists(filePath))
             {
+                if (getPrinter().getGCodeControl().executeDetectLiquidLevel().equals("H"))
+                    return;
+
                 IOUtilities.executeNativeCommand(new String[]{"/bin/sh", "-c", "sudo xset s off"}, null);
                 IOUtilities.executeNativeCommand(new String[]{"/bin/sh", "-c", "sudo xset -dpms"}, null);
                 IOUtilities.executeNativeCommand(new String[]{"/bin/sh", "-c", "sudo xset s noblank"}, null);
@@ -844,6 +829,8 @@ public class UartScreenControl
             {
                 if (status == JobStatus.Ready)
                     string = new String(new char[] {0x5C31, 0x7EEA});//就绪
+                if (status == JobStatus.Connecting)
+                    string = new String(new char[] {0x6B63, 0x5728, 0x8FDE, 0x63A5});//正在连接
                 else if (status == JobStatus.Printing)
                     string = new String(new char[] {0x6253, 0x5370, 0x4E2D});//打印中
                 else if (status == JobStatus.Failed)
@@ -1184,16 +1171,30 @@ public class UartScreenControl
         {
             getPrinter().getGCodeControl().executeNetWeight();
         }
-        //读取重量
-        double materialWeight = 0;
-        String receive = getPrinter().getGCodeControl().executeMaterialWeight();
-        Pattern GCODE_Weight_PATTERN = Pattern.compile("\\s*Weight:\\s*(-?[\\d\\.]+).*");
-        Matcher matcher = GCODE_Weight_PATTERN.matcher(receive);
-        if (matcher.find())
+        try
         {
-            materialWeight = Double.parseDouble(matcher.group(1));
+            //读取重量
+            double materialWeight = new Double(getPrinter().getGCodeControl().executeMaterialWeight());
+            writeText(addr_txt_material[3], String.format("%-16s", String.format("%.2f", materialWeight)).getBytes());
+
+            int bottleID = new Integer(getPrinter().getGCodeControl().executeDetectBottleType());
+            String bottleName = MaterialManager.INSTANCE.getMaterialName(bottleID);
+            String bottleColor = MaterialManager.INSTANCE.getMaterialColor(bottleID);
+            writeText(addr_txt_material[0], String.format("%-16s", String.format("%d", bottleID)).getBytes());
+            writeText(addr_txt_material[1], String.format("%-16s", bottleName).getBytes("GBK"));
+            writeText(addr_txt_material[2], String.format("%-16s", bottleColor).getBytes("GBK"));
+
+            int troughID = new Integer(getPrinter().getGCodeControl().executeDetectTroughType());
+            String troughName = MaterialManager.INSTANCE.getMaterialName(troughID);
+            String troughColor = MaterialManager.INSTANCE.getMaterialColor(troughID);
+            writeText(addr_txt_material[4], String.format("%-16s", String.format("%d", troughID)).getBytes());
+            writeText(addr_txt_material[5], String.format("%-16s", troughName).getBytes("GBK"));
+            writeText(addr_txt_material[6], String.format("%-16s", troughColor).getBytes("GBK"));
         }
-        writeText(addr_txt_material_weight, String.format("%-16s", String.format("%.2f", materialWeight)).getBytes());
+        catch (UnsupportedEncodingException e)
+        {
+            System.out.println(e.toString());
+        }
     }
 
     private void action_control(byte[] payload)

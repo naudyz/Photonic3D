@@ -74,6 +74,13 @@
 					<input title="template variable = ${ZLiftRetractSpeed}" type="number" step="0.01" class="form-control" placeholder="mm" ng-model="printersController.currentPrinter.configuration.slicingProfile.LiftRetractSpeed">
 				</div>
 				<!--zyd add for parameters -e-->
+				<!--zyd add for increase exposure time if the job has been paused -s-->
+				<div class="list-group-item">
+					<i title="Exposure Time For Resume Layer" class="fa fa-2x fa-arrows-v pull-left"></i>
+					<h4 title="Exposure Time For Resume Layer">Exposure Time For Resume Layer (ms)</h4>
+					<input title="Exposure Time For Resume Layer" type="number" step="1" class="form-control" placeholder="ms" ng-model="printersController.currentPrinter.configuration.slicingProfile.ResumeLayerTime">
+				</div>
+				<!--zyd add for increase exposure time if the job has been paused -e-->
 				<!--zyd add for set delay time -s-->
 				<div class="list-group-item">
 					<i title="Delay Time Before Solidify" class="fa fa-2x fa-arrows-v pull-left"></i>
@@ -92,8 +99,8 @@
 				</div>
 				<div class="list-group-item">
 					<i title="Delay Time For Air Pump" class="fa fa-2x fa-arrows-v pull-left"></i>
-					<h4 title="Delay Time For Air Pump">Delay Time For Air Pump (ms)</h4>
-					<input title="Delay Time For Air Pump" type="number" step="1" class="form-control" placeholder="ms" ng-model="printersController.currentPrinter.configuration.slicingProfile.DelayTimeForAirPump">
+					<h4 title="Delay Time For Air Pump">Delay Time For Air Pump (s)</h4>
+					<input title="Delay Time For Air Pump" type="number" step="1" class="form-control" placeholder="s" ng-model="printersController.currentPrinter.configuration.slicingProfile.DelayTimeForAirPump">
 				</div>
 				<!--zyd add for set delay time -e-->
 				<!--zyd add for set Z travel -s-->

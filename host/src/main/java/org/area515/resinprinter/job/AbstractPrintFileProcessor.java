@@ -57,6 +57,8 @@ public abstract class AbstractPrintFileProcessor<G,E> implements PrintFileProces
 	private Pattern GCODE_Trough_Resin_Type_PATTERN = Pattern.compile("\\s*Trough_Resin_Type:(\\d+).*");
 	private Pattern GCODE_Door_Limit_PATTERN = Pattern.compile("\\s*Door_Limit_State:([H,L]).*");
 	private Pattern GCODE_Led_Temperature_PATTERN = Pattern.compile("\\s*Temperature_Alarm_State:([H,L]).*");
+	
+	private boolean needPerformAfterPause = false;
 	// FIXME: 2017/9/18 zyd add for detect machine state -e
 	
 	public static class DataAid {
@@ -242,18 +244,20 @@ public abstract class AbstractPrintFileProcessor<G,E> implements PrintFileProces
 				int numberOfFirstLayers = new Integer(properties.getProperty("numberOfFirstLayers", "3"));
 				int firstLayerTime = new Integer(properties.getProperty("firstLayerTime", "20000"));
 				int layerTime = new Integer(properties.getProperty("layerTime", "8000"));
+				int resumeLayerTime = new Integer(properties.getProperty("resumeLayerTime", "10000"));
 				double liftDistance = new Double(properties.getProperty("liftDistance", "8"));
 				double liftFeedSpeed = new Double(properties.getProperty("liftFeedSpeed", "500"));
 				double liftRetractSpeed = new Double(properties.getProperty("liftRetractSpeed", "100"));
 				int delayTimeBeforeSolidify = new Integer(properties.getProperty("delayTimeBeforeSolidify", "0"));
 				int delayTimeAfterSolidify = new Integer(properties.getProperty("delayTimeAfterSolidify", "0"));
 				int delayTimeAsLiftedTop = new Integer(properties.getProperty("delayTimeAsLiftedTop", "0"));
-				int delayTimeForAirPump = new Integer(properties.getProperty("delayTimeForAirPump", "30000"));
+				int delayTimeForAirPump = new Integer(properties.getProperty("delayTimeForAirPump", "60"));
 
 				aid.inkConfiguration.setSliceHeight(sliceHeight);
 				aid.inkConfiguration.setNumberOfFirstLayers(numberOfFirstLayers);
 				aid.inkConfiguration.setFirstLayerExposureTime(firstLayerTime);
 				aid.inkConfiguration.setExposureTime(layerTime);
+				aid.slicingProfile.setResumeLayerExposureTime(resumeLayerTime);
 				aid.slicingProfile.setLiftDistance(liftDistance);
 				aid.slicingProfile.setLiftFeedSpeed(liftFeedSpeed);
 				aid.slicingProfile.setLiftRetractSpeed(liftRetractSpeed);
@@ -326,24 +330,29 @@ public abstract class AbstractPrintFileProcessor<G,E> implements PrintFileProces
 		}
 
 		//读取料槽液位限位状态
-		receive = aid.printer.getGCodeControl().executeGCodeWithTemplating(aid.printJob, "M276", false);
-		matcher = GCODE_Liquid_Level_PATTERN.matcher(receive);
-		if (matcher.find() && matcher.group(1).equals("L"))
+		int count = 4;
+		while (count-- >= 0)
 		{
-			aid.printer.getGCodeControl().executeGCodeWithTemplating(aid.printJob, "M277 S1", false);
-			// FIXME: 2017/9/15 zyd add for set delay time -s
-			if (aid.slicingProfile.getDelayTimeForAirPump() > 0)
-			{
-				Thread.sleep(aid.slicingProfile.getDelayTimeForAirPump());
-			}
-			// FIXME: 2017/9/15 zyd add for set delay time -e
-			aid.printer.getGCodeControl().executeGCodeWithTemplating(aid.printJob, "M277 S0", false);
 			receive = aid.printer.getGCodeControl().executeGCodeWithTemplating(aid.printJob, "M276", false);
 			matcher = GCODE_Liquid_Level_PATTERN.matcher(receive);
 			if (matcher.find() && matcher.group(1).equals("L"))
 			{
-				aid.printer.setStatus(JobStatus.PausedGrooveOutOfMaterial);
-				return;
+				if (count < 0)
+				{
+					aid.printer.setStatus(JobStatus.PausedGrooveOutOfMaterial);
+					return;
+				}
+				else
+				{
+					aid.printer.getGCodeControl().executeGCodeWithTemplating(aid.printJob, "M277 S1", false);
+					// FIXME: 2017/9/15 zyd add for set delay time -s
+					if (aid.slicingProfile.getDelayTimeForAirPump() > 0)
+					{
+						Thread.sleep(aid.slicingProfile.getDelayTimeForAirPump()*1000);
+					}
+					// FIXME: 2017/9/15 zyd add for set delay time -e
+					aid.printer.getGCodeControl().executeGCodeWithTemplating(aid.printJob, "M277 S0", false);
+				}
 			}
 		}
 
@@ -459,8 +468,18 @@ public abstract class AbstractPrintFileProcessor<G,E> implements PrintFileProces
 		}
 		
 		//Sleep for the amount of time that we are exposing the resin.
-		Thread.sleep(aid.printJob.getExposureTime());
-		
+		// FIXME: 2017/11/6 zyd add for increase exposure time if the job have been paused -s
+		if (needPerformAfterPause)
+		{
+			if (aid.slicingProfile.getResumeLayerExposureTime() < aid.printJob.getExposureTime())
+				Thread.sleep(aid.printJob.getExposureTime());
+			else
+				Thread.sleep(aid.slicingProfile.getResumeLayerExposureTime());
+		}
+		else
+			Thread.sleep(aid.printJob.getExposureTime());
+		// FIXME: 2017/11/6 zyd add for increase exposure time if the job have been paused -e
+
 		if (aid.slicingProfile.getgCodeShutter() != null && aid.slicingProfile.getgCodeShutter().trim().length() > 0) {
 			aid.printer.setShutterOpen(false);
 			aid.printer.stopExposureTiming();
@@ -507,7 +526,7 @@ public abstract class AbstractPrintFileProcessor<G,E> implements PrintFileProces
 		//Perform the lift feed gcode manipulation
 		aid.printer.getGCodeControl().executeGCodeWithTemplating(aid.printJob, aid.slicingProfile.getgCodeLiftFeed(), false);
 
-		boolean needPerformAfterPause = false;
+		needPerformAfterPause = false;
 		while (true)
 		{
 			if (!aid.printer.isPrintActive())

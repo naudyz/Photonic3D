@@ -75,7 +75,7 @@ public abstract class GCodeControl {
 		ParseState state = null;
 		Matcher matcher = null;
 		do {
-			state = IOUtilities.readLine(exitIfPrintInactive?getPrinter():null, getPrinter().getPrinterFirmwareSerialPort(), builder, parseLocation, gcodeTimeout, IOUtilities.CPU_LIMITING_DELAY);
+			state = IOUtilities.readLine(exitIfPrintInactive?getPrinter():null, getPrinter().getPrinterFirmwareSerialPort(), builder, parseLocation, 5000, IOUtilities.CPU_LIMITING_DELAY);
 			parseLocation = state.parseLocation;
 			if (state.currentLine != null) {
 				if (line == null) {
@@ -90,7 +90,7 @@ public abstract class GCodeControl {
 			logger.info("Read: {}", state.currentLine);
 			addGCodeLog(state.currentLine);
 
-		} while (matcher != null && !matcher.matches());
+		} while (matcher != null && !matcher.matches() && !state.timeout);
 		if (state.timeout && restartSerialOnTimeout) {
 			try {
 				getPrinter().getPrinterFirmwareSerialPort().restartCommunications();
@@ -136,7 +136,7 @@ public abstract class GCodeControl {
 
 	private boolean isResponseOk(Matcher matcher)
 	{
-		if (matcher.group(1) != null || matcher.group(1).toLowerCase().endsWith("ok"))
+		if (matcher.matches() && matcher.group(1).toLowerCase().endsWith("ok"))
 		{
 			return true;
 		}
@@ -220,21 +220,22 @@ public abstract class GCodeControl {
 			addGCodeLog("Write: " + cmd);
         	getPrinter().getPrinterFirmwareSerialPort().write(cmd.getBytes());
         	PrinterResponse response = readUntilOkOrStoppedPrinting(false);
-        	if (response == null) {
-        		return "";
-        	}
+
 			// FIXME: 2017/9/1 zyd add for read completed response -s
+			if (response == null || !isResponseOk(response.getLastLineMatcher())) {
+				return "";
+			}
+
 			builder.append(response.getFullResponse().toString());
-			if (isResponseOk(response.getLastLineMatcher()))
 			{
 				PrinterResponse response_completed = readUntilCompletedOrStoppedPrinting(false);
 				if (response_completed != null)
 				{
 					builder.append(response_completed.getFullResponse().toString());
 				}
+				return builder.toString();
 			}
 
-        	return builder.toString();
 			// FIXME: 2017/9/1 zyd add for read completed response -e
 		} catch (IOException ex) {
         	logger.error("Couldn't send:" + cmd, ex);
@@ -255,10 +256,14 @@ public abstract class GCodeControl {
 		try {
 			StringBuilder builder = new StringBuilder();
 			builder.append(IOUtilities.readWithTimeout(getPrinter().getPrinterFirmwareSerialPort(), SerialManager.READ_TIME_OUT, SerialManager.CPU_LIMITING_DELAY));
-			builder.append(executeSetAbsolutePositioning());
+			Thread.sleep(4000);
+			String str = executeSetAbsolutePositioning();
+			if (str.equals(""))
+				throw new IOException();
+			builder.append(str);
 			return builder.toString();
 		} catch (InterruptedException e) {
-			return null;
+			throw new IOException();
 		}
     }
     public String executeSetAbsolutePositioning() {
@@ -310,7 +315,15 @@ public abstract class GCodeControl {
 	// FIXME: 2017/9/20 zyd add for execute shutter -e
 	// FIXME: 2017/9/26 zyd add for execute weight -s
 	public String executeMaterialWeight() {
-		return sendGcode("M270\r\n");
+		String materialWeight = "0";
+		String receive = sendGcode("M270\r\n");
+		Pattern GCODE_Weight_PATTERN = Pattern.compile("\\s*Weight:\\s*(-?[\\d\\.]+).*");
+		Matcher matcher = GCODE_Weight_PATTERN.matcher(receive);
+		if (matcher.find())
+		{
+			materialWeight = matcher.group(1);
+		}
+		return materialWeight;
 	}
 	public String executeNetWeight() {
 		return sendGcode("M271 S1\r\n");
@@ -324,7 +337,42 @@ public abstract class GCodeControl {
 		return sendGcode("M266 S0\r\n");
 	}
 	// FIXME: 2017/10/20 zyd add for execute water pump -e
-	
+	// FIXME: 2017/11/1 zyd add for execute detect machine status -s
+	public String executeDetectLiquidLevel() {
+		String Liquid_Level = "L";
+		Pattern GCODE_Liquid_Level_PATTERN = Pattern.compile("\\s*Liquid_Level:([H,L]).*");
+		String receive = sendGcode("M276\r\n");
+		Matcher matcher = GCODE_Liquid_Level_PATTERN.matcher(receive);
+		if (matcher.find())
+		{
+			Liquid_Level = matcher.group(1);
+		}
+		return Liquid_Level;
+	}
+	public String executeDetectBottleType() {
+		String Bottle_Resin_Type = "0";
+		Pattern GCODE_Bottle_Resin_Type_PATTERN = Pattern.compile("\\s*Bottle_Resin_Type:(\\d+).*");
+		String receive = sendGcode("M273\r\n");
+		Matcher matcher = GCODE_Bottle_Resin_Type_PATTERN.matcher(receive);
+		if (matcher.find())
+		{
+			Bottle_Resin_Type = matcher.group(1);
+		}
+		return Bottle_Resin_Type;
+	}
+	public String executeDetectTroughType() {
+		String Trough_Resin_Type = "0";
+		Pattern GCODE_Trough_Resin_Type_PATTERN = Pattern.compile("\\s*Trough_Resin_Type:(\\d+).*");
+		String receive = sendGcode("M274\r\n");
+		Matcher matcher = GCODE_Trough_Resin_Type_PATTERN.matcher(receive);
+		if (matcher.find())
+		{
+			Trough_Resin_Type = matcher.group(1);
+		}
+		return Trough_Resin_Type;
+	}
+	// FIXME: 2017/11/1 zyd add for execute detect machine status -e
+
 	private void parseCommentCommand(String comment) {
 		//If a comment was encountered, parse it to determine if something interesting was in there.
 		Pattern delayPattern = Pattern.compile(";\\s*<\\s*Delay\\s*>\\s*(\\d+).*", Pattern.CASE_INSENSITIVE);

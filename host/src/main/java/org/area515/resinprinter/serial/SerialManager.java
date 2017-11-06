@@ -12,6 +12,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.area515.resinprinter.display.AlreadyAssignedException;
 import org.area515.resinprinter.display.InappropriateDeviceException;
+import org.area515.resinprinter.job.JobStatus;
 import org.area515.resinprinter.printer.ComPortSettings;
 import org.area515.resinprinter.printer.Printer;
 import org.area515.resinprinter.projector.ProjectorModel;
@@ -35,7 +36,7 @@ public class SerialManager {
 	}
 	
 	/** Milliseconds to block while waiting for port open */
-	public static final int READ_TIME_OUT = 5000;
+	public static final int READ_TIME_OUT = 1000;
 	public static final int READ_CHITCHAT_TIME_OUT = 1500;
 	public static final int OPEN_TIME_OUT = 1000;
 	public static final int CPU_LIMITING_DELAY = 100;
@@ -291,8 +292,9 @@ public class SerialManager {
 
 		try {
 			identifier.open(printer.getName(), OPEN_TIME_OUT, resources.settings);
-			printer.setPrinterFirmwareSerialPort(identifier);
-			
+			if (!printer.setPrinterFirmwareSerialPort(identifier)) {
+				throw new InappropriateDeviceException();
+			}
 			logger.info("Completed assignment of firmware using serialPort:{} with settings:{} to printer:{}", identifier, resources.settings, printer);
 		} catch (AlreadyAssignedException | InappropriateDeviceException e) {
 			printersBySerialPort.remove(resources.comPort);

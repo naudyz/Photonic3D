@@ -13,6 +13,8 @@ import org.area515.resinprinter.job.AbstractPrintFileProcessor.DataAid;
 import org.area515.resinprinter.job.JobManagerException;
 import org.area515.resinprinter.job.render.CurrentImageRenderer;
 
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileInputStream;
@@ -62,7 +64,11 @@ public class SVGImageRender extends CurrentImageRenderer
                     @Override
                     public void writeImage(BufferedImage image, TranscoderOutput out) throws TranscoderException
                     {
-                        imagePointer[0] = image;
+                        BufferedImage image1 = new BufferedImage(image.getWidth(), image.getHeight(), image.getColorModel().getTransparency());
+                        Graphics2D graphics2D = image1.createGraphics();
+                        graphics2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                        graphics2D.drawImage(image, null, 0, 0);
+                        imagePointer[0] = image1;
                     }
                 };
                 trans.setTranscodingHints(transcoderHints);

@@ -1,7 +1,14 @@
 package org.area515.resinprinter.job;
 
 public enum JobStatus {
+	// FIXME: 2017/11/1 zyd add for connecting status -s
+	Connecting,
+	// FIXME: 2017/11/1 zyd add for connecting status -e
 	Ready,
+	// FIXME: 2017/10/31 zyd add for error status -s
+	ErrorScreen,
+	ErrorControlBoard,
+	// FIXME: 2017/10/31 zyd add for error status -e
 	Printing,
 	Failed,
 	Completed,
@@ -60,4 +67,12 @@ public enum JobStatus {
 				this == JobStatus.PausedOutOfPrintMaterial ||
 				this == JobStatus.PausedWithWarning;
 	}
+
+	// FIXME: 2017/10/31 zyd add for error status -s
+	public boolean isNotReady() {
+		return this == JobStatus.ErrorScreen ||
+				this == JobStatus.ErrorControlBoard ||
+				this == JobStatus.Connecting;
+	}
+	// FIXME: 2017/10/31 zyd add for error status -e
 }

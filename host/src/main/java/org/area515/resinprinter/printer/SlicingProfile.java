@@ -127,7 +127,7 @@ public class SlicingProfile implements Named {
 	    private int layerTime;
 	    @XmlElement(name="FirstLayerTime")
 	    private int firstLayerTime;
-	    @XmlElement(name="NumberofBottomLayers")
+		@XmlElement(name="NumberofBottomLayers")
 	    private int numberOfFirstLayers;
 		@XmlElement(name="ResinPriceL")
 	    private double resinPriceL;
@@ -309,6 +309,10 @@ public class SlicingProfile implements Named {
 	private List<InkConfig> inkConfig;
     @XmlElement(name="TwoDimensionalSettings")
     private TwoDimensionalSettings twoDimensionalSettings;
+	// FIXME: 2017/11/6 zyd add for increase exposure time if the job has been paused -s
+	@XmlElement(name="ResumeLayerTime")
+	private int resumeLayerTime;
+	// FIXME: 2017/11/6 zyd add for increase exposure time if the job has been paused -e
 	// FIXME: 2017/9/15 zyd add for set delay time -s
 	@XmlElement(name="DelayTimeBeforeSolidify")
 	private int delayTimeBeforeSolidify;
@@ -589,6 +593,16 @@ public class SlicingProfile implements Named {
 	public void setExposureTimeCalculator(String exposureTimeCalculator) {
 		this.exposureTimeCalculator = exposureTimeCalculator;
 	}
+
+	// FIXME: 2017/11/6 zyd add for increase exposure time if the job has been paused -s
+	@XmlTransient
+	public int getResumeLayerExposureTime() {
+		return resumeLayerTime;
+	}
+	public void setResumeLayerExposureTime(int resumeLayerTime) {
+		this.resumeLayerTime = resumeLayerTime;
+	}
+	// FIXME: 2017/11/6 zyd add for increase exposure time if the job has been paused -e
 
 	// FIXME: 2017/9/15 zyd add for set delay time -s
 	@XmlTransient

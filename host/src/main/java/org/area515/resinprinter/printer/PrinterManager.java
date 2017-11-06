@@ -14,6 +14,7 @@ import org.area515.resinprinter.display.DisplayManager;
 import org.area515.resinprinter.display.GraphicsOutputInterface;
 import org.area515.resinprinter.display.InappropriateDeviceException;
 import org.area515.resinprinter.job.JobManagerException;
+import org.area515.resinprinter.job.JobStatus;
 import org.area515.resinprinter.job.PrintJob;
 import org.area515.resinprinter.notification.NotificationManager;
 import org.area515.resinprinter.serial.SerialCommunicationsPort;
@@ -115,43 +116,10 @@ public class PrinterManager {
 			//If the oldLock is still in play, we don't care about the printerLock we just made...
 			printerLock = oldLock;
 		}
-		try {
-			printer = new Printer(currentConfiguration);
-			String monitorId = currentConfiguration.getMachineConfig().getOSMonitorID();
-			GraphicsOutputInterface graphicsDevice = null;
-			if (monitorId != null) {
-				graphicsDevice = DisplayManager.Instance().getDisplayDevice(currentConfiguration.getMachineConfig().getOSMonitorID());
-			} else {
-				graphicsDevice = DisplayManager.Instance().getDisplayDevice(currentConfiguration.getMachineConfig().getDisplayIndex());
-			}
-			
-			if (graphicsDevice == null) {
-				if (monitorId != null) {
-					throw new JobManagerException("Couldn't find graphicsDevice called:" + monitorId);
-				} else {
-					throw new JobManagerException("Couldn't find graphicsDevice called:" + currentConfiguration.getMachineConfig().getDisplayIndex());
-				}
-			}
-			DisplayManager.Instance().assignDisplay(printer, graphicsDevice);
-			logger.debug("Assigned display:{} to:{}", graphicsDevice, printer);
 
-			ComPortSettings settings = printer.getConfiguration().getMachineConfig().getMonitorDriverConfig().getComPortSettings();
-			if (settings != null && settings.getPortName() != null) {
-				String projectorComportId = settings.getPortName();
-				SerialCommunicationsPort projectorPort = SerialManager.Instance().getSerialDevice(projectorComportId);
-				if (projectorPort != null) {
-					SerialManager.Instance().assignSerialPortToProjector(printer, projectorPort);
-					logger.debug("Assigned projector:{} to:{}", projectorPort, printer);
-				}
-			}
-			
-			String firmwareComportId = printer.getConfiguration().getMachineConfig().getMotorsDriverConfig().getComPortSettings().getPortName();
-			SerialCommunicationsPort firmwarePort = SerialManager.Instance().getSerialDevice(firmwareComportId);
-			if (firmwarePort == null) {
-				throw new JobManagerException("Couldn't find communications device called:" + firmwareComportId);
-			}
-			SerialManager.Instance().assignSerialPortToFirmware(printer, firmwarePort);
-			logger.debug("Assigned 3dprinter firmware:{} to:{}", firmwarePort, printer);
+		try
+		{
+			printer = new Printer(currentConfiguration);
 
 			// FIXME: 2017/9/1 zyd add for uartscreen -s
 			String uartScreenComportId = printer.getConfiguration().getMachineConfig().getUartScreenConfig().getComPortSettings().getPortName();
@@ -164,20 +132,75 @@ public class PrinterManager {
 				SerialManager.Instance().assignSerialPortToUartScreen(printer, uartScreenPort);
 				logger.debug("Assigned uartscreen:{} to:{}", uartScreenPort, printer);
 			}
+			NotificationManager.printerChanged(printer);
 			// FIXME: 2017/9/1 zyd add for uartscreen -e
 
+			String monitorId = currentConfiguration.getMachineConfig().getOSMonitorID();
+			GraphicsOutputInterface graphicsDevice = null;
+			if (monitorId != null) {
+				graphicsDevice = DisplayManager.Instance().getDisplayDevice(currentConfiguration.getMachineConfig().getOSMonitorID());
+			} else {
+				graphicsDevice = DisplayManager.Instance().getDisplayDevice(currentConfiguration.getMachineConfig().getDisplayIndex());
+			}
+
+			if (graphicsDevice == null) {
+				if (monitorId != null) {
+					throw new JobManagerException("Couldn't find graphicsDevice called:" + monitorId);
+				} else {
+					throw new JobManagerException("Couldn't find graphicsDevice called:" + currentConfiguration.getMachineConfig().getDisplayIndex());
+				}
+			}
+			DisplayManager.Instance().assignDisplay(printer, graphicsDevice);
+			logger.debug("Assigned display:{} to:{}", graphicsDevice, printer);
+		}
+		catch (JobManagerException | AlreadyAssignedException | InappropriateDeviceException e)
+		{
+			if (printer != null)
+				printer.setStatus(JobStatus.ErrorScreen);
+			handleError(printer, currentConfiguration, e);
+			printerLock.unlock();
+			throw e;
+		}
+		catch (Throwable e)
+		{
+			if (printer != null)
+				printer.setStatus(JobStatus.ErrorScreen);
+			handleError(printer, currentConfiguration, e);
+			printerLock.unlock();
+			throw new InappropriateDeviceException("Internal error on server", e);
+		}
+
+		try
+		{
+			String firmwareComportId = printer.getConfiguration().getMachineConfig().getMotorsDriverConfig().getComPortSettings().getPortName();
+			SerialCommunicationsPort firmwarePort = SerialManager.Instance().getSerialDevice(firmwareComportId);
+			if (firmwarePort == null) {
+				throw new JobManagerException("Couldn't find communications device called:" + firmwareComportId);
+			}
+			SerialManager.Instance().assignSerialPortToFirmware(printer, firmwarePort);
+			logger.debug("Assigned 3dprinter firmware:{} to:{}", firmwarePort, printer);
+
+			printer.setStatus(JobStatus.Ready);
 			printersByName.put(printer.getName(), printer);
 			NotificationManager.printerChanged(printer);
 			printer.setStarted(true);
 			logger.info("Printer started:{}", printer);
 			return printer;
-		} catch (JobManagerException | AlreadyAssignedException | InappropriateDeviceException e) {
+		}
+		catch (JobManagerException | AlreadyAssignedException | InappropriateDeviceException e)
+		{
+			printer.setStatus(JobStatus.ErrorControlBoard);
 			handleError(printer, currentConfiguration, e);
 			throw e;
-		} catch (Throwable e) {
+		}
+		catch (Throwable e)
+		{
+			printer.setStatus(JobStatus.ErrorControlBoard);
 			handleError(printer, currentConfiguration, e);
 			throw new InappropriateDeviceException("Internal error on server", e);
-		} finally {
+		}
+		finally
+		{
 			printerLock.unlock();
 		}
 	}
@@ -186,6 +209,7 @@ public class PrinterManager {
 		logger.error("Error starting printer:" + currentConfiguration, e);
 		try {
 			if (printer != null) {
+				printer.getUartScreenControl().setError(printer.getStatus());
 				printer.close();
 			}
 		} finally {

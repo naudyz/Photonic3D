@@ -13,6 +13,8 @@ import org.apache.commons.io.FileUtils;
 import org.junit.Test;
 
 import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -27,6 +29,8 @@ import java.io.OutputStreamWriter;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
+
+import javax.imageio.ImageIO;
 
 /**
  * Created by zyd on 2017/9/29.
@@ -105,38 +109,52 @@ public class ConvertSVGToPNG
     {
         File pngFile = new File("D:\\Users\\zyd\\Desktop\\printFile\\0.png");
         File svgFile = new File("D:\\Users\\zyd\\Desktop\\printFile\\0.svg");
-        PNGTranscoder t = new PNGTranscoder();
 
         try
         {
+            final BufferedImage[] imagePointer = new BufferedImage[1];
+
             TranscodingHints transcoderHints = new TranscodingHints();
             transcoderHints.put(ImageTranscoder.KEY_XML_PARSER_VALIDATING, Boolean.FALSE);
             transcoderHints.put(ImageTranscoder.KEY_DOM_IMPLEMENTATION, SVGDOMImplementation.getDOMImplementation());
             transcoderHints.put(ImageTranscoder.KEY_DOCUMENT_ELEMENT_NAMESPACE_URI, SVGConstants.SVG_NAMESPACE_URI);
             transcoderHints.put(ImageTranscoder.KEY_DOCUMENT_ELEMENT, "svg");
-            transcoderHints.put(ImageTranscoder.KEY_XML_PARSER_VALIDATING, Boolean.FALSE);
             transcoderHints.put(ImageTranscoder.KEY_WIDTH, new Float(2560));
             transcoderHints.put(ImageTranscoder.KEY_HEIGHT, new Float(1600));
-            transcoderHints.put(ImageTranscoder.KEY_FORCE_TRANSPARENT_WHITE, Boolean.TRUE);
-            transcoderHints.put(ImageTranscoder.KEY_BACKGROUND_COLOR, Color.black);
 
-            t.setTranscodingHints(transcoderHints);
+            try
+            {
+                TranscoderInput input = new TranscoderInput(new FileInputStream(svgFile));
+                ImageTranscoder trans = new ImageTranscoder()
+                {
+                    @Override
+                    public BufferedImage createImage(int w, int h)
+                    {
+                        return new BufferedImage(w, h, BufferedImage.TYPE_4BYTE_ABGR);
+                    }
 
-            TranscoderInput input = new TranscoderInput(svgFile.toURI().toString());
-            pngFile.createNewFile();
+                    @Override
+                    public void writeImage(BufferedImage image, TranscoderOutput out) throws TranscoderException
+                    {
+                        BufferedImage image1 = new BufferedImage(image.getWidth(), image.getHeight(), image.getColorModel().getTransparency());
+                        Graphics2D graphics2D = image1.createGraphics();
+                        graphics2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                        graphics2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
+                        graphics2D.drawImage(image, null, 0, 0);
+                        imagePointer[0] = image1;
+                    }
+                };
+                trans.setTranscodingHints(transcoderHints);
+                trans.transcode(input, null);
 
-            OutputStream ostream = new FileOutputStream(pngFile);
-            TranscoderOutput output = new TranscoderOutput(ostream);
-
-            t.transcode(input, output);
-            ostream.flush();
-            ostream.close();
+                ImageIO.write(imagePointer[0], "png", pngFile);
+            }
+            catch (TranscoderException ex)
+            {
+                System.out.println(ex.toString());
+            }
         }
         catch (IOException e)
-        {
-            System.out.println(e.toString());
-        }
-        catch (TranscoderException e)
         {
             System.out.println(e.toString());
         }

@@ -12,6 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.area515.resinprinter.job.JobStatus;
 import org.area515.resinprinter.printer.Printer;
 import org.area515.resinprinter.server.HostProperties;
 

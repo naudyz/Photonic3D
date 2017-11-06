@@ -42,7 +42,7 @@ public class Printer {
 	// FIXME: 2017/9/1 zyd add for uartscreen -e
 	
 	//For Job Status
-	private volatile JobStatus status = JobStatus.Ready;
+	private volatile JobStatus status = JobStatus.Connecting;
 	private ReentrantLock statusLock = new ReentrantLock();
 	private Condition jobContinued = statusLock.newCondition();
 	
@@ -143,7 +143,7 @@ public class Printer {
 			}
 			logger.info("Moving from status:" + this.status + " to status:" + status);
 			this.status = status;
-			if (!status.isPrintInProgress()) {
+			if (!status.isPrintInProgress() && refreshFrame != null) {
 				refreshFrame.resetSliceCount();
 			}
 		} finally {
@@ -308,7 +308,8 @@ public class Printer {
 		return gCodeControl;
 	}
 	
-	public void setPrinterFirmwareSerialPort(SerialCommunicationsPort printerFirmwareSerialPort) {
+	public boolean setPrinterFirmwareSerialPort(SerialCommunicationsPort printerFirmwareSerialPort) {
+		boolean result = false;
 		this.printerFirmwareSerialPort = printerFirmwareSerialPort;
 		logger.info("Firmware serial port set to:" + printerFirmwareSerialPort);
 		
@@ -316,10 +317,12 @@ public class Printer {
 		if (printerFirmwareSerialPort != null) {
 			try {
 				logger.info("Firmware Welcome chitchat:" + getGCodeControl().readWelcomeChitChat());
+				result = true;
 			} catch (IOException e) {
 				logger.error("Error while reading welcome chitchat", e);
 			}
 		}
+		return result;
 	}
 	@JsonIgnore
 	public SerialCommunicationsPort getPrinterFirmwareSerialPort() {
