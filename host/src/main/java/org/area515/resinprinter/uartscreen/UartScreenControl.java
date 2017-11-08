@@ -36,7 +36,7 @@ import javax.imageio.ImageIO;
 
 public class UartScreenControl
 {
-    private String version = "0.1.3";
+    private String version = "0.1.6";
 
     //private int Page
     private Thread readThread;
@@ -341,9 +341,9 @@ public class UartScreenControl
         try
         {
             if (status == JobStatus.ErrorScreen)
-                writeText(addr_txt_machineStatus, String.format("%-16s", new String(new char[] {0x5C4F, 0x5E55, 0x9519, 0x8BEF})).getBytes("GBK"));
+                writeText(addr_txt_machineStatus, String.format("%-16s", new String(new char[] {0x5C4F, 0x5E55, 0x9519, 0x8BEF})).getBytes("GBK"));//屏幕错误
             else if (status == JobStatus.ErrorControlBoard)
-                writeText(addr_txt_machineStatus, String.format("%-16s", new String(new char[] {0x63A7, 0x5236, 0x7248, 0x9519, 0x8BEF})).getBytes("GBK"));
+                writeText(addr_txt_machineStatus, String.format("%-16s", new String(new char[] {0x63A7, 0x5236, 0x7248, 0x9519, 0x8BEF})).getBytes("GBK"));//控制板错误
             while (!writeQueue.isEmpty())
                 Thread.sleep(100);
         }
@@ -829,6 +829,10 @@ public class UartScreenControl
             {
                 if (status == JobStatus.Ready)
                     string = new String(new char[] {0x5C31, 0x7EEA});//就绪
+                if (status == JobStatus.ErrorScreen)
+                    string = new String(new char[] {0x5C4F, 0x5E55, 0x9519, 0x8BEF});//屏幕错误
+                else if (status == JobStatus.ErrorControlBoard)
+                    string = new String(new char[] {0x63A7, 0x5236, 0x7248, 0x9519, 0x8BEF});//控制板错误
                 if (status == JobStatus.Connecting)
                     string = new String(new char[] {0x6B63, 0x5728, 0x8FDE, 0x63A5});//正在连接
                 else if (status == JobStatus.Printing)

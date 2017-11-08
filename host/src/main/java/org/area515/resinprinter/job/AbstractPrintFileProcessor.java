@@ -39,6 +39,7 @@ import org.area515.resinprinter.printer.PrinterConfiguration;
 import org.area515.resinprinter.printer.SlicingProfile;
 import org.area515.resinprinter.printer.SlicingProfile.InkConfig;
 import org.area515.resinprinter.server.HostProperties;
+import org.area515.resinprinter.server.Main;
 import org.area515.resinprinter.services.CustomizerService;
 import org.area515.resinprinter.services.PrinterService;
 import org.area515.resinprinter.slice.StlError;
@@ -274,32 +275,53 @@ public abstract class AbstractPrintFileProcessor<G,E> implements PrintFileProces
 
 	}
 
-	public void performDetectMachineState(DataAid aid) throws InappropriateDeviceException, InterruptedException
+	public void performDetectDoorLimit(DataAid aid) throws InappropriateDeviceException, InterruptedException
 	{
 		if (aid == null) {
 			throw new IllegalStateException("initializeDataAid must be called before this method");
 		}
 
-		String receive;
-		Matcher matcher;
+		if (aid.printer.getStatus().isPaused())
+			return;
 
 		//读取舱门状态
-		receive = aid.printer.getGCodeControl().executeGCodeWithTemplating(aid.printJob, "M278", false);
-		matcher = GCODE_Door_Limit_PATTERN.matcher(receive);
+		String receive = aid.printer.getGCodeControl().executeGCodeWithTemplating(aid.printJob, "M278", false);
+		Matcher matcher = GCODE_Door_Limit_PATTERN.matcher(receive);
 		if (matcher.find() && matcher.group(1).equals("L"))
 		{
 			aid.printer.setStatus(JobStatus.PausedDoorOpened);
-			return;
+		}
+	}
+
+	public void performDetectLedTemperature(DataAid aid) throws InappropriateDeviceException, InterruptedException
+	{
+		if (aid == null) {
+			throw new IllegalStateException("initializeDataAid must be called before this method");
 		}
 
+		if (aid.printer.getStatus().isPaused())
+			return;
+
 		//读取Led板温度状态
-		receive = aid.printer.getGCodeControl().executeGCodeWithTemplating(aid.printJob, "M279", false);
-		matcher = GCODE_Led_Temperature_PATTERN.matcher(receive);
+		String receive = aid.printer.getGCodeControl().executeGCodeWithTemplating(aid.printJob, "M279", false);
+		Matcher matcher = GCODE_Led_Temperature_PATTERN.matcher(receive);
 		if (matcher.find() && matcher.group(1).equals("H"))
 		{
 			aid.printer.setStatus(JobStatus.PausedLedOverTemperature);
-			return;
 		}
+	}
+
+	public void performDetectResinType(DataAid aid) throws InappropriateDeviceException, InterruptedException
+	{
+		if (aid == null) {
+			throw new IllegalStateException("initializeDataAid must be called before this method");
+		}
+
+		if (aid.printer.getStatus().isPaused())
+			return;
+
+		String receive;
+		Matcher matcher;
 
 		//读取树脂材料瓶中的数据
 		String Bottle_Resin_Type = "";
@@ -326,15 +348,24 @@ public abstract class AbstractPrintFileProcessor<G,E> implements PrintFileProces
 		if (!Bottle_Resin_Type.equals(Trough_Resin_Type) || Bottle_Resin_Type.equals("") || Trough_Resin_Type.equals(""))
 		{
 			aid.printer.setStatus(JobStatus.PausedUnconformableMaterial);
-			return;
 		}
+	}
+
+	public void performDetectLiquidLevel(DataAid aid) throws InappropriateDeviceException, InterruptedException
+	{
+		if (aid == null) {
+			throw new IllegalStateException("initializeDataAid must be called before this method");
+		}
+
+		if (aid.printer.getStatus().isPaused())
+			return;
 
 		//读取料槽液位限位状态
 		int count = 4;
 		while (count-- >= 0)
 		{
-			receive = aid.printer.getGCodeControl().executeGCodeWithTemplating(aid.printJob, "M276", false);
-			matcher = GCODE_Liquid_Level_PATTERN.matcher(receive);
+			String receive = aid.printer.getGCodeControl().executeGCodeWithTemplating(aid.printJob, "M276", false);
+			Matcher matcher = GCODE_Liquid_Level_PATTERN.matcher(receive);
 			if (matcher.find() && matcher.group(1).equals("L"))
 			{
 				if (count < 0)
@@ -354,8 +385,9 @@ public abstract class AbstractPrintFileProcessor<G,E> implements PrintFileProces
 					aid.printer.getGCodeControl().executeGCodeWithTemplating(aid.printJob, "M277 S0", false);
 				}
 			}
+			else
+				return;
 		}
-
 	}
 	// FIXME: 2017/9/18 zyd add for detect machine state -e
 	
@@ -407,12 +439,9 @@ public abstract class AbstractPrintFileProcessor<G,E> implements PrintFileProces
 			NotificationManager.errorEncountered(aid.printJob, errors);
 		}
 		
-		//Perform two actions at once here:
-		// 1. Pause if the user asked us to pause
-		// 2. Get out if the print is cancelled
-//		if (!aid.printer.waitForPauseIfRequired()) {
-//			return aid.printer.getStatus();
-//		}
+		if (!aid.printer.isPrintActive()) {
+			return aid.printer.getStatus();
+		}
 
 		//Execute preslice gcode
 		if (aid.slicingProfile.getgCodePreslice() != null && 
@@ -442,7 +471,12 @@ public abstract class AbstractPrintFileProcessor<G,E> implements PrintFileProces
 		if (aid.inkDetector != null) {
 			aid.inkDetector.startMeasurement();
 		}
-		
+
+		if (!aid.printer.isPrintActive())
+		{
+			return aid.printer.getStatus();
+		}
+
 		//Determine the dynamic amount of time we should expose our resin
 		if (!aid.printJob.isExposureTimeOverriden() && aid.slicingProfile.getExposureTimeCalculator() != null && aid.slicingProfile.getExposureTimeCalculator().trim().length() > 0) {
 			Number value = calculate(aid, aid.slicingProfile.getExposureTimeCalculator(), "exposure time script");
@@ -466,9 +500,28 @@ public abstract class AbstractPrintFileProcessor<G,E> implements PrintFileProces
 			aid.printer.startExposureTiming();
 			aid.printer.getGCodeControl().executeGCodeWithTemplating(aid.printJob, aid.slicingProfile.getgCodeShutter(), false);
 		}
-		
+
+		if (aid.slicingProfile.getDetectionEnabled())
+		{
+			Main.GLOBAL_EXECUTOR.submit(new Runnable()
+			{
+				@Override
+				public void run()
+				{
+					try
+					{
+						performDetectDoorLimit(aid);
+						performDetectLedTemperature(aid);
+						performDetectResinType(aid);
+					} catch (Exception e)
+					{
+					}
+				}
+			});
+		}
+
 		//Sleep for the amount of time that we are exposing the resin.
-		// FIXME: 2017/11/6 zyd add for increase exposure time if the job have been paused -s
+		// FIXME: 2017/11/6 zyd add for increase exposure time if the job has been paused -s
 		if (needPerformAfterPause)
 		{
 			if (aid.slicingProfile.getResumeLayerExposureTime() < aid.printJob.getExposureTime())
@@ -478,7 +531,10 @@ public abstract class AbstractPrintFileProcessor<G,E> implements PrintFileProces
 		}
 		else
 			Thread.sleep(aid.printJob.getExposureTime());
-		// FIXME: 2017/11/6 zyd add for increase exposure time if the job have been paused -e
+		// FIXME: 2017/11/6 zyd add for increase exposure time if the job has been paused -e
+
+		//Blank the screen
+		aid.printer.showBlankImage();
 
 		if (aid.slicingProfile.getgCodeShutter() != null && aid.slicingProfile.getgCodeShutter().trim().length() > 0) {
 			aid.printer.setShutterOpen(false);
@@ -493,9 +549,6 @@ public abstract class AbstractPrintFileProcessor<G,E> implements PrintFileProces
 		}
 		// FIXME: 2017/9/15 zyd add for set delay time -e
 
-		//Blank the screen
-		aid.printer.showBlankImage();
-		
 		logger.info("ExposureTime:{}", ()->Log4jTimer.completeTimer(EXPOSURE_TIMER));
 
 		//Perform two actions at once here:
@@ -533,10 +586,7 @@ public abstract class AbstractPrintFileProcessor<G,E> implements PrintFileProces
 			{
 				return aid.printer.getStatus();
 			}
-			if (aid.slicingProfile.getDetectionEnabled())
-			{
-				performDetectMachineState(aid);
-			}
+
 			if (aid.printer.isPrintPaused())
 			{
 				needPerformAfterPause = true;
@@ -551,7 +601,19 @@ public abstract class AbstractPrintFileProcessor<G,E> implements PrintFileProces
 				}
 				NotificationManager.jobChanged(aid.printer, aid.printJob);
 			}
-			else
+
+			if (aid.slicingProfile.getDetectionEnabled())
+			{
+				if (needPerformAfterPause)
+				{
+					performDetectDoorLimit(aid);
+					performDetectLedTemperature(aid);
+					performDetectResinType(aid);
+				}
+				performDetectLiquidLevel(aid);
+			}
+
+			if (!aid.printer.isPrintPaused())
 			{
 				if (needPerformAfterPause)
 				{
@@ -560,6 +622,7 @@ public abstract class AbstractPrintFileProcessor<G,E> implements PrintFileProces
 						aid.printer.getGCodeControl().executeGCodeWithTemplating(aid.printJob, aid.slicingProfile.getgCodeAfterPause(), false);
 					}
 				}
+
 				break;
 			}
 		}

@@ -64,7 +64,7 @@ public class SVGImageRender extends CurrentImageRenderer
                     @Override
                     public void writeImage(BufferedImage image, TranscoderOutput out) throws TranscoderException
                     {
-                        BufferedImage image1 = new BufferedImage(image.getWidth(), image.getHeight(), image.getColorModel().getTransparency());
+                        BufferedImage image1 = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_4BYTE_ABGR);
                         Graphics2D graphics2D = image1.createGraphics();
                         graphics2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                         graphics2D.drawImage(image, null, 0, 0);

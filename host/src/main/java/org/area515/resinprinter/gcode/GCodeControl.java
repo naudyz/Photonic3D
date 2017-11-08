@@ -26,7 +26,7 @@ import freemarker.template.TemplateException;
 public abstract class GCodeControl {
 	public static Logger logger = LogManager.getLogger();
 	private int SUGGESTED_TIMEOUT_FOR_ONE_GCODE = 1000 * 60 * 2;//2 minutes
-	private Pattern GCODE_RESPONSE_PATTERN = Pattern.compile("(?i)(?:(o?k|e?rror:|a?larm:)(.*)|<?([^>]*)>|\\[?([^]]*)\\])\r?\n");
+	private Pattern GCODE_RESPONSE_PATTERN = Pattern.compile("(?i)(?:(o?k)(.*)|<?([^>]*)>|\\[?([^]]*)\\])\r?\n");
 	// FIXME: 2017/9/1 zyd add for read completed response -s
 	private Pattern GCODE_COMPLETED_PATTERN = Pattern.compile("(cmd_comp)(.*)\r?\n");
 	// FIXME: 2017/9/1 zyd add for read completed response -e
@@ -142,6 +142,17 @@ public abstract class GCodeControl {
 		}
 		return false;
 	}
+
+	private boolean isResponseError(String response)
+	{
+		Pattern GCODE_ERROR_PATTERN = Pattern.compile("\\s*(fatal:|error:).*");
+		Matcher matcher = GCODE_ERROR_PATTERN.matcher(response);
+		if (matcher.find())
+		{
+			return true;
+		}
+		return false;
+	}
 	// FIXME: 2017/9/1 zyd add for read completed response -e
 	
 	private boolean isPausableError(Matcher matcher, PrintJob printJob) {
@@ -153,57 +164,55 @@ public abstract class GCodeControl {
 		return responseRegEx != null && responseRegEx.trim().length() > 0 && matcher.group(2) != null && matcher.group(2).matches(responseRegEx);
 	}
 	
-	String sendGcodeAndRespectPrinter(PrintJob printJob, String cmd) throws IOException {
+	String sendGcodeAndRespectPrinter(PrintJob printJob, String cmd) throws IOException
+	{
 		gCodeLock.lock();
-		try {
-			if (!cmd.endsWith("\n")) {
+		try
+		{
+			if (!cmd.endsWith("\n"))
+			{
 				cmd += "\n";
 			}
 
 			StringBuilder builder = new StringBuilder();
-			boolean mustAttempt = true;
-			for (int attempt = 0; mustAttempt; attempt++) {
-				logger.info("Write {}: {}", attempt, cmd);
-				// FIXME: 2017/9/28 zyd add for gcode log -s
-				addGCodeLog("Write: " + cmd);
-				// FIXME: 2017/9/28 zyd add for gcode log -e
-				getPrinter().getPrinterFirmwareSerialPort().write(cmd.getBytes());
-				PrinterResponse response = readUntilOkOrStoppedPrinting(false);
-				if (response == null) {
-					return "";//I think this should be null, but I'm preserving backwards compatibility
-				}
 
-				// FIXME: 2017/9/1 zyd add for read completed response -s
-				builder.append(response.getFullResponse().toString());
-
-				if (isResponseOk(response.getLastLineMatcher()))
-				{
-					PrinterResponse response_completed = readUntilCompletedOrStoppedPrinting(false);
-					if (response_completed != null)
-						builder.append(response_completed.getFullResponse().toString());
-				}
-				// FIXME: 2017/9/1 zyd add for read completed response -e
-
-				if (isPausableError(response.getLastLineMatcher(), printJob)) {
-					attempt++;
-					printJob.setErrorDescription(response.getLastLineMatcher().group(2));
-					logger.info("Received error from printer:" + response.getLastLineMatcher().group(2));
-					getPrinter().setStatus(JobStatus.PausedWithWarning);
-					NotificationManager.jobChanged(getPrinter(), printJob);
-
-					//Allow the user to manipulate the printer while paused
-					gCodeLock.unlock();
-					try {
-						mustAttempt = getPrinter().waitForPauseIfRequired();
-					} finally {
-						gCodeLock.lock();
-					}
-				} else {
-					mustAttempt = false;
-				}
+			logger.info("Write : {}", cmd);
+			// FIXME: 2017/9/28 zyd add for gcode log -s
+			addGCodeLog("Write: " + cmd);
+			// FIXME: 2017/9/28 zyd add for gcode log -e
+			getPrinter().getPrinterFirmwareSerialPort().write(cmd.getBytes());
+			PrinterResponse response = readUntilOkOrStoppedPrinting(false);
+			if (response == null || isResponseError(response.getFullResponse().toString()))
+			{
+				getPrinter().setStatus(JobStatus.ErrorControlBoard);
+				NotificationManager.printerChanged(getPrinter());
+				return "";//I think this should be null, but I'm preserving backwards compatibility
 			}
+
+			// FIXME: 2017/9/1 zyd add for read completed response -s
+			builder.append(response.getFullResponse().toString());
+
+			if (isResponseOk(response.getLastLineMatcher()))
+			{
+				PrinterResponse response_completed = readUntilCompletedOrStoppedPrinting(false);
+				if (response_completed != null)
+					builder.append(response_completed.getFullResponse().toString());
+			}
+			// FIXME: 2017/9/1 zyd add for read completed response -e
+
+			if (isPausableError(response.getLastLineMatcher(), printJob))
+			{
+				printJob.setErrorDescription(response.getLastLineMatcher().group(2));
+				logger.info("Received error from printer:" + response.getLastLineMatcher().group(2));
+				getPrinter().setStatus(JobStatus.PausedWithWarning);
+				NotificationManager.jobChanged(getPrinter(), printJob);
+
+				//Allow the user to manipulate the printer while paused
+			}
+
 			return builder.toString();
-		} finally {
+		} finally
+		{
 			gCodeLock.unlock();
 		}
 	}
@@ -222,7 +231,9 @@ public abstract class GCodeControl {
         	PrinterResponse response = readUntilOkOrStoppedPrinting(false);
 
 			// FIXME: 2017/9/1 zyd add for read completed response -s
-			if (response == null || !isResponseOk(response.getLastLineMatcher())) {
+			if (response == null || isResponseError(response.getFullResponse().toString()) || !isResponseOk(response.getLastLineMatcher())) {
+				getPrinter().setStatus(JobStatus.ErrorControlBoard);
+				NotificationManager.printerChanged(getPrinter());
 				return "";
 			}
 

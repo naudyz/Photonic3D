@@ -138,6 +138,8 @@ public class Printer {
 	public void setStatus(JobStatus status) {
 		statusLock.lock();
 		try {
+			if (this.status != null && this.status.isError())
+				return;
 			if (this.status != null && this.status.isPaused()) {
 				jobContinued.signalAll();
 			}

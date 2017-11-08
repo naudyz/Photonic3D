@@ -99,7 +99,10 @@ public class CreationWorkshopSceneFileProcessor extends AbstractPrintFileProcess
 			{
 				if (aid.slicingProfile.getDetectionEnabled())
 				{
-					performDetectMachineState(aid);
+					performDetectDoorLimit(aid);
+					performDetectLedTemperature(aid);
+					performDetectResinType(aid);
+					performDetectLiquidLevel(aid);
 				}
 				if (aid.printer.isPrintPaused())
 				{
@@ -147,7 +150,10 @@ public class CreationWorkshopSceneFileProcessor extends AbstractPrintFileProcess
 						{
 							if (aid.slicingProfile.getDetectionEnabled())
 							{
-								performDetectMachineState(aid);
+								performDetectDoorLimit(aid);
+								performDetectLedTemperature(aid);
+								performDetectResinType(aid);
+								performDetectLiquidLevel(aid);
 							}
 							if (printer.isPrintPaused())
 							{

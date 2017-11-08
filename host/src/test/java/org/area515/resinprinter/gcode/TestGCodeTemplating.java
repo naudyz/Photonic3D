@@ -72,6 +72,7 @@ public class TestGCodeTemplating {
 		Pattern GCODE_M114_RESP_PATTERN = Pattern.compile("\\s*.*Z:(-?\\d+\\.\\d+).*");
 		Pattern GCODE_Led_Temperature_PATTERN = Pattern.compile("\\s*Led_Limit:([H,L]).*");
 		Pattern GCODE_Temperature_PATTERN = Pattern.compile("\\s*T:\\s*(-?[\\d\\.]+).*B:(-?[\\d\\.]+).*");
+		Pattern GCODE_ERROR_PATTERN = Pattern.compile("\\s*(fatal:|error:).*");
 		str = "Weight:1.2g";
 		str = "Liquid_Level:H";
 		str = "Bottle_Resin_Type:200";
@@ -79,11 +80,11 @@ public class TestGCodeTemplating {
 		str = "X:0.00 Y:0.00 Z:10.000 E:NAN\r\n";
 		str = "Led_Limit:H";
 		str = "OK\nDoor_Limit:H\ncmd_comp\n";
-		str = "ok\n" +
+		str = "error:\n" +
 				"Door_Limit:H\n" +
 				"cmd_comp\n";
-		str = "T:25.00 /0 B:24.03 /0 B@:0 @:0";
-		Matcher matcher = GCODE_Temperature_PATTERN.matcher(str);
+		//str = "T:25.00 /0 B:24.03 /0 B@:0 @:0";
+		Matcher matcher = GCODE_ERROR_PATTERN.matcher(str);
 		if (matcher.find())
 		{
 			System.out.println(matcher.group(1)+" "+matcher.group(2));

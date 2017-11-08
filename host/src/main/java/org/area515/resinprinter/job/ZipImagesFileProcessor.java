@@ -68,7 +68,10 @@ public class ZipImagesFileProcessor extends CreationWorkshopSceneFileProcessor i
 			{
 				if (dataAid.slicingProfile.getDetectionEnabled())
 				{
-					performDetectMachineState(dataAid);
+					performDetectDoorLimit(dataAid);
+					performDetectLedTemperature(dataAid);
+					performDetectResinType(dataAid);
+					performDetectLiquidLevel(dataAid);
 				}
 				if (dataAid.printer.isPrintPaused())
 				{
@@ -85,7 +88,6 @@ public class ZipImagesFileProcessor extends CreationWorkshopSceneFileProcessor i
 				}
 			}
 			// FIXME: 2017/9/18 zyd add for detect machine state -e
-			performHeader(dataAid);
 
 			Iterator<File> imgIter = imageFiles.values().iterator();
 			
@@ -106,6 +108,9 @@ public class ZipImagesFileProcessor extends CreationWorkshopSceneFileProcessor i
 //				Future<RenderedData> prepareImage = Main.GLOBAL_EXECUTOR.submit(new SimpleImageRenderer(dataAid, this, imageFile));
 				Future<RenderedData> prepareImage = Main.GLOBAL_EXECUTOR.submit(new SVGImageRender(dataAid, this, imageFile));
 				// FIXME: 2017/10/12 zyd add for support svg file -e
+
+				performHeader(dataAid);
+
 				boolean slicePending = true;
 
 				do {

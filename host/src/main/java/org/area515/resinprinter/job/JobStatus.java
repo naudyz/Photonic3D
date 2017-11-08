@@ -74,5 +74,10 @@ public enum JobStatus {
 				this == JobStatus.ErrorControlBoard ||
 				this == JobStatus.Connecting;
 	}
+
+	public boolean isError() {
+		return this == JobStatus.ErrorScreen ||
+				this == JobStatus.ErrorControlBoard;
+	}
 	// FIXME: 2017/10/31 zyd add for error status -e
 }
