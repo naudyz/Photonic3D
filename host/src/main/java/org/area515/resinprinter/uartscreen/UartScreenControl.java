@@ -36,7 +36,7 @@ import javax.imageio.ImageIO;
 
 public class UartScreenControl
 {
-    private String version = "0.1.6";
+    private String version = "0.1.8";
 
     //private int Page
     private Thread readThread;
@@ -1049,11 +1049,11 @@ public class UartScreenControl
             return;
         int key_value = payload[8];
 
-        if (key_value == 0x00 && !getPrinter().getStatus().isPrintInProgress())
+        if (key_value == 0x01 && !getPrinter().getStatus().isPrintInProgress())
             printJob();
-        else if (key_value == 0x01)
-            pauseJob();
         else if (key_value == 0x02)
+            pauseJob();
+        else if (key_value == 0x03)
             stopJob();
     }
 
@@ -1148,18 +1148,20 @@ public class UartScreenControl
         else if (cmd == addr_txt_parameters[2])
             layerTime = new Integer(str);
         else if (cmd == addr_txt_parameters[3])
-            liftDistance = new Double(str);
+            resumeLayerTime = new Integer(str);
         else if (cmd == addr_txt_parameters[4])
-            liftFeedSpeed = new Double(str);
+            liftDistance = new Double(str);
         else if (cmd == addr_txt_parameters[5])
-            liftRetractSpeed = new Double(str);
+            liftFeedSpeed = new Double(str);
         else if (cmd == addr_txt_parameters[6])
-            delayTimeBeforeSolidify = new Integer(str);
+            liftRetractSpeed = new Double(str);
         else if (cmd == addr_txt_parameters[7])
-            delayTimeAfterSolidify = new Integer(str);
+            delayTimeBeforeSolidify = new Integer(str);
         else if (cmd == addr_txt_parameters[8])
-            delayTimeAsLiftedTop = new Integer(str);
+            delayTimeAfterSolidify = new Integer(str);
         else if (cmd == addr_txt_parameters[9])
+            delayTimeAsLiftedTop = new Integer(str);
+        else if (cmd == addr_txt_parameters[10])
             delayTimeForAirPump = new Integer(str);
     }
 

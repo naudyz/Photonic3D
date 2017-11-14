@@ -239,9 +239,11 @@ public abstract class AbstractPrintFileProcessor<G,E> implements PrintFileProces
 			double estimateMaterialWeight = new Double(properties.getProperty("estimateMaterialWeight", "0"));
 			aid.printJob.setEstimateMaterialWeight(estimateMaterialWeight);
 
+			double sliceHeight = new Double(properties.getProperty("sliceHeight", "0"));
+			if (sliceHeight > 0)
+				aid.inkConfiguration.setSliceHeight(sliceHeight);
 			if (!aid.slicingProfile.getParameterEnabled())
 			{
-				double sliceHeight = new Double(properties.getProperty("sliceHeight", "0.1"));
 				int numberOfFirstLayers = new Integer(properties.getProperty("numberOfFirstLayers", "3"));
 				int firstLayerTime = new Integer(properties.getProperty("firstLayerTime", "20000"));
 				int layerTime = new Integer(properties.getProperty("layerTime", "8000"));
@@ -254,7 +256,6 @@ public abstract class AbstractPrintFileProcessor<G,E> implements PrintFileProces
 				int delayTimeAsLiftedTop = new Integer(properties.getProperty("delayTimeAsLiftedTop", "0"));
 				int delayTimeForAirPump = new Integer(properties.getProperty("delayTimeForAirPump", "60"));
 
-				aid.inkConfiguration.setSliceHeight(sliceHeight);
 				aid.inkConfiguration.setNumberOfFirstLayers(numberOfFirstLayers);
 				aid.inkConfiguration.setFirstLayerExposureTime(firstLayerTime);
 				aid.inkConfiguration.setExposureTime(layerTime);
