@@ -35,6 +35,9 @@ public class PrintJob {
 	// FIXME: 2017/10/26 zyd add for detect machine state -s
 	private volatile double estimateMaterialWeight;
 	// FIXME: 2017/10/26 zyd add for detect machine state -e
+	// FIXME: 2017/11/15 zyd add for estimate time remaining -s
+	private volatile int timeRemaining = 0;
+	// FIXME: 2017/11/15 zyd add for estimate time remaining- e
 	
 	//Overridables
 	private volatile boolean overrideExposureTime;
@@ -47,16 +50,6 @@ public class PrintJob {
 	// FIXME: 2017/9/25 zyd add for parameters -e
 	private volatile boolean overrideZLiftDistance;
 	private volatile double zLiftDistance;
-
-	// FIXME: 2017/9/15 zyd add for set delay time -s
-	private volatile int delayTimeBeforeSolidify = 0;
-	private volatile int delayTimeAfterSolidify = 0;
-	private volatile int delayTimeAsLiftedTop = 0;
-	private volatile int delayTimeForAirPump = 0;
-	// FIXME: 2017/9/15 zyd add for set delay time -e
-	// FIXME: 2017/9/18 zyd add for set Z travel -s
-	private volatile int zTravel = 0;
-	// FIXME: 2017/9/18 zyd add for set Z travel -e
 
 	private UUID id = UUID.randomUUID();
 	private File jobFile;
@@ -338,45 +331,6 @@ public class PrintJob {
 		this.exposureTime = exposureTime;
 	}
 
-	// FIXME: 2017/9/15 zyd add for set delay time -s
-	public int getDelayTimeBeforeSolidify() {
-		return delayTimeBeforeSolidify;
-	}
-	public void setDelayTimeBeforeSolidify(int delayTimeBeforeSolidify) {
-		this.delayTimeBeforeSolidify = delayTimeBeforeSolidify;
-	}
-
-	public int getDelayTimeAfterSolidify() {
-		return delayTimeAfterSolidify;
-	}
-	public void setDelayTimeAfterSolidify(int delayTimeAfterSolidify) {
-		this.delayTimeAfterSolidify = delayTimeAfterSolidify;
-	}
-
-	public int getDelayTimeAsLiftedTop() {
-		return delayTimeAsLiftedTop;
-	}
-	public void setDelayTimeAsLiftedTop(int delayTimeAsLiftedTop) {
-		this.delayTimeAsLiftedTop = delayTimeAsLiftedTop;
-	}
-
-	public int getDelayTimeForAirPump() {
-		return delayTimeForAirPump;
-	}
-	public void setDelayTimeForAirPump(int delayTimeForAirPump) {
-		this.delayTimeForAirPump = delayTimeForAirPump;
-	}
-	// FIXME: 2017/9/15 zyd add for set delay time -e
-
-	// FIXME: 2017/9/18 zyd add for set Z travel -s
-	public int getZTravel() {
-		return zTravel;
-	}
-	public void setZTravel(int zTravel){
-		this.zTravel = zTravel;
-	}
-	// FIXME: 2017/9/18 zyd add for set Z travel -e
-	
 	public long getAverageSliceTime() {
 		return averageSliceTime;
 	}
@@ -404,7 +358,7 @@ public class PrintJob {
 		InkConfig inkConfig = getPrinter().getConfiguration().getSlicingProfile().getSelectedInkConfig();
 		averageSliceTime = ((averageSliceTime * currentSlice) + sliceTime) / (currentSlice + 1);
 		elapsedTime = System.currentTimeMillis() - startTime;
-		
+
 		currentSliceTime = sliceTime;
 		currentSlice++;
 		
@@ -415,6 +369,46 @@ public class PrintJob {
 		
 		totalCost += currentSliceCost;
 	}
+
+	// FIXME: 2017/11/15 zyd add for estimate time remaining -s
+	public int estimateTimeRemaining()
+	{
+		int totalTime;
+
+		if (totalSlices == 0)
+			return 0;
+
+		int numberOfFirstLayers = getPrinter().getConfiguration().getSlicingProfile().getSelectedInkConfig().getNumberOfFirstLayers();
+		double liftDistance = getPrinter().getConfiguration().getSlicingProfile().getLiftDistance();
+		double liftFeedSpeed = getPrinter().getConfiguration().getSlicingProfile().getLiftFeedSpeed();
+		double liftRetractSpeed = getPrinter().getConfiguration().getSlicingProfile().getLiftRetractSpeed();
+		int delayTimeBeforeSolidify = getPrinter().getConfiguration().getSlicingProfile().getDelayTimeBeforeSolidify();
+		int delayTimeAsLiftedTop = getPrinter().getConfiguration().getSlicingProfile().getDelayTimeAsLiftedTop();
+		int delayTimeAfterSolidify = getPrinter().getConfiguration().getSlicingProfile().getDelayTimeAfterSolidify();
+		int exposureTime = getPrinter().getConfiguration().getSlicingProfile().getSelectedInkConfig().getExposureTime();
+		int firstLayerExposureTime = getPrinter().getConfiguration().getSlicingProfile().getSelectedInkConfig().getFirstLayerExposureTime();
+
+		totalTime = (delayTimeBeforeSolidify + delayTimeAsLiftedTop + delayTimeAfterSolidify) * (totalSlices - currentSlice);
+		if (currentSlice < numberOfFirstLayers)
+		{
+			totalTime += ((numberOfFirstLayers - currentSlice) * firstLayerExposureTime) + ((totalSlices - numberOfFirstLayers) * exposureTime);
+		}
+		else
+		{
+			totalTime += (totalSlices - currentSlice) * exposureTime;
+		}
+		totalTime += (int)(liftDistance / (liftFeedSpeed / (60.0 * 1000))) * (totalSlices - currentSlice);
+		totalTime += (int)(liftDistance / (liftRetractSpeed / (60.0 * 1000))) * (totalSlices - currentSlice);
+		totalTime += 1000 * (totalSlices - currentSlice); //add 1 second because show image need about 1 second;
+
+		return totalTime;
+	}
+
+	public int getEstimateTimeRemaining()
+	{
+		return estimateTimeRemaining();
+	}
+	// FIXME: 2017/11/15 zyd add for estimate time remaining =e
 	
 	public String toString() {
 		if (printer == null) {

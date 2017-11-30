@@ -403,7 +403,7 @@ public abstract class AbstractPrintFileProcessor<G,E> implements PrintFileProces
 
 		//Set the default exposure time(this is only used if there isn't an exposure time calculator)
 		aid.printJob.setExposureTime(aid.inkConfiguration.getExposureTime());
-		
+
 		//Perform the gcode associated with the printer start function
 		if (aid.slicingProfile.getgCodeHeader() != null && 
 			aid.slicingProfile.getgCodeHeader().trim().length() > 0 &&
@@ -415,7 +415,7 @@ public abstract class AbstractPrintFileProcessor<G,E> implements PrintFileProces
 		if (aid.inkConfiguration != null) {
 			aid.inkDetector = aid.inkConfiguration.getInkDetector(aid.printJob);
 		}
-		
+
 		//Set the initial values for all variables.
 		aid.printJob.setExposureTime(aid.inkConfiguration.getExposureTime());
 		aid.printJob.setZLiftDistance(aid.slicingProfile.getLiftDistance());
@@ -423,7 +423,7 @@ public abstract class AbstractPrintFileProcessor<G,E> implements PrintFileProces
 		aid.printJob.setZLiftFeedSpeed(aid.slicingProfile.getLiftFeedSpeed());
 		aid.printJob.setZLiftRetractSpeed(aid.slicingProfile.getLiftRetractSpeed());
 		// FIXME: 2017/9/25 zyd add for parameters -e
-		
+
 		//Initialize bulb hours only once per print
 		aid.printer.getBulbHours();
 	}

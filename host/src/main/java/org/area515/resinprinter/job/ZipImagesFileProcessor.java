@@ -55,11 +55,13 @@ public class ZipImagesFileProcessor extends CreationWorkshopSceneFileProcessor i
 
 			SortedMap<String, File> imageFiles = findImages(printJob.getJobFile());
 
-			printJob.setTotalSlices(imageFiles.size());
-
 			// FIXME: 2017/9/18 zyd add for detect machine state -s
 			File cfgFile = findConfigFile(printJob.getJobFile());
 			parseConfigFile(dataAid, cfgFile);
+
+			printJob.setTotalSlices(imageFiles.size());
+
+			NotificationManager.jobChanged(dataAid.printer, dataAid.printJob);
 			if (dataAid.slicingProfile.getDetectionEnabled())
 			{
 				performDetectMaterialWeight(dataAid);

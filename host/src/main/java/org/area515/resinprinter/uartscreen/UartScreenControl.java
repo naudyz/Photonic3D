@@ -15,10 +15,12 @@ import org.area515.util.IOUtilities;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.util.List;
+import java.util.Properties;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -36,11 +38,12 @@ import javax.imageio.ImageIO;
 
 public class UartScreenControl
 {
-    private String version = "0.1.8";
+    private String version = "0.2.0";
 
     //private int Page
     private Thread readThread;
     private Thread writeThread;
+//    private Thread testThread;
     private volatile boolean isRead_stop = false;
     private volatile boolean isWrite_stop = false;
 
@@ -82,7 +85,7 @@ public class UartScreenControl
     private double printProgress = 0;
     private int printCurrentLayer = 0;
     private int printTotalLayers = 0;
-    private long printedTime = 0;
+    private long remainingTime = 0;
     /*****************machine status******************/
 
     /*****************uart screen address******************/
@@ -121,7 +124,7 @@ public class UartScreenControl
     private static final char addr_txt_printFileSize = 0x1040;
     private static final char addr_txt_printProgress = 0x1050;
     private static final char addr_txt_layers = 0x1060;
-    private static final char addr_txt_printedTime = 0x1070;
+    private static final char addr_txt_remainingTime = 0x1070;
     private static final char[] addr_txt_fileList = {0x1100, 0x1120, 0x1140, 0x1160, 0x1180};
     private static final char addr_txt_filePage = 0x11A0;
     private static final char addr_txt_version = 0x1200;
@@ -238,6 +241,57 @@ public class UartScreenControl
         });
         writeThread.start();
     }
+
+    /*
+    private volatile boolean isTest_stop = true;
+    private void startTestThread()
+    {
+        try
+        {
+            InputStream stream = new FileInputStream(new File("/opt/cwh/test.cfg"));
+            Properties properties = new Properties();
+            properties.load(stream);
+            int openDelay = new Integer(properties.getProperty("openDelay", "5000"));
+            int closeDelay = new Integer(properties.getProperty("closeDelay", "5000"));
+
+            testThread = new Thread(new Runnable()
+            {
+                @Override
+                public void run()
+                {
+                    boolean flag = false;
+                    while (!isTest_stop)
+                    {
+                        try
+                        {
+                            if (getPrinter().getStatus().isNotReady())
+                            {
+                                Thread.sleep(1000);
+                                continue;
+                            }
+                            if (!flag)
+                            {
+                                getPrinter().getGCodeControl().executeShutterOn();
+                                flag = true;
+                            }
+                            showImage("/opt/cwh/3DTALK.png");
+                            Thread.sleep(openDelay);
+                            showImage(null);
+                            Thread.sleep(closeDelay);
+                        } catch (InterruptedException e)
+                        {
+                            System.out.println(e.toString());
+                        }
+                    }
+                    System.out.println("write thread stop");
+                }
+            });
+            isTest_stop = false;
+            testThread.start();
+        }
+        catch (IOException e){}
+    }
+    */
 
     public void start()
     {
@@ -689,17 +743,17 @@ public class UartScreenControl
         parameterEnabled = getPrinter().getConfiguration().getSlicingProfile().getParameterEnabled();
         detectionEnabled = getPrinter().getConfiguration().getSlicingProfile().getDetectionEnabled();
 
-        writeText(addr_txt_parameters[0], String.format("%d", numberOfFirstLayers).getBytes());
-        writeText(addr_txt_parameters[1], String.format("%d", firstLayerTime).getBytes());
-        writeText(addr_txt_parameters[2], String.format("%d", layerTime).getBytes());
-        writeText(addr_txt_parameters[3], String.format("%d", resumeLayerTime).getBytes());
-        writeText(addr_txt_parameters[4], String.format("%.2f", liftDistance).getBytes());
-        writeText(addr_txt_parameters[5], String.format("%.2f", liftFeedSpeed).getBytes());
-        writeText(addr_txt_parameters[6], String.format("%.2f", liftRetractSpeed).getBytes());
-        writeText(addr_txt_parameters[7], String.format("%d", delayTimeBeforeSolidify).getBytes());
-        writeText(addr_txt_parameters[8], String.format("%d", delayTimeAfterSolidify).getBytes());
-        writeText(addr_txt_parameters[9], String.format("%d", delayTimeAsLiftedTop).getBytes());
-        writeText(addr_txt_parameters[10], String.format("%d", delayTimeForAirPump).getBytes());
+        writeText(addr_txt_parameters[0], String.format("%-8s", String.format("%d", numberOfFirstLayers)).getBytes());
+        writeText(addr_txt_parameters[1], String.format("%-8s", String.format("%d", firstLayerTime)).getBytes());
+        writeText(addr_txt_parameters[2], String.format("%-8s", String.format("%d", layerTime)).getBytes());
+        writeText(addr_txt_parameters[3], String.format("%-8s", String.format("%d", resumeLayerTime)).getBytes());
+        writeText(addr_txt_parameters[4], String.format("%-8s", String.format("%.2f", liftDistance)).getBytes());
+        writeText(addr_txt_parameters[5], String.format("%-8s", String.format("%.2f", liftFeedSpeed)).getBytes());
+        writeText(addr_txt_parameters[6], String.format("%-8s", String.format("%.2f", liftRetractSpeed)).getBytes());
+        writeText(addr_txt_parameters[7], String.format("%-8s", String.format("%d", delayTimeBeforeSolidify)).getBytes());
+        writeText(addr_txt_parameters[8], String.format("%-8s", String.format("%d", delayTimeAfterSolidify)).getBytes());
+        writeText(addr_txt_parameters[9], String.format("%-8s", String.format("%d", delayTimeAsLiftedTop)).getBytes());
+        writeText(addr_txt_parameters[10], String.format("%-8s", String.format("%d", delayTimeForAirPump)).getBytes());
         if (parameterEnabled)
             writeText(addr_icon_parameter_enabled, new byte[] {0x00, 67});
         else
@@ -798,7 +852,7 @@ public class UartScreenControl
             setPrintFileSize(job.getJobFileSize(), false, false);
             setPrintProgress(job.getJobProgress(), true, false);
             setPrintLayers(job.getCurrentSlice(), job.getTotalSlices(), true, false);
-            setPrintedTime(job.getElapsedTime(), true, false);
+            setRemainingTime(job.getEstimateTimeRemaining(), true, false);
         }
         else
         {
@@ -806,7 +860,7 @@ public class UartScreenControl
             setPrintFileSize(0, false, true);
             setPrintProgress(0, false, true);
             setPrintLayers(0, 0, false, true);
-            setPrintedTime(0, false, true);
+            setRemainingTime(0, false, true);
         }
     }
 
@@ -964,25 +1018,25 @@ public class UartScreenControl
         }
     }
 
-    private void setPrintedTime(long printedTime, boolean force, boolean hide)
+    private void setRemainingTime(long remainingTime, boolean force, boolean hide)
     {
-        if (this.printedTime != printedTime)
+        if (this.remainingTime != remainingTime)
         {
-            this.printedTime = printedTime;
+            this.remainingTime = remainingTime;
             force = true;
         }
 
         if (hide)
         {
-            writeText(addr_txt_printedTime, String.format("%-10s", "").getBytes());
+            writeText(addr_txt_remainingTime, String.format("%-10s", "").getBytes());
         }
         else if (force)
         {
             String string = String.format("%d:%02d:%02d",
-                    this.printedTime / 3600000,
-                    (this.printedTime % 3600000) / 60000,
-                    (this.printedTime % 60000) / 1000);
-            writeText(addr_txt_printedTime, String.format("%-10s", string).getBytes());
+                    this.remainingTime / 3600000,
+                    (this.remainingTime % 3600000) / 60000,
+                    (this.remainingTime % 60000) / 1000);
+            writeText(addr_txt_remainingTime, String.format("%-10s", string).getBytes());
         }
     }
     /****************************notify uartscreen state -end*************************************/

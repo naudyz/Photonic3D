@@ -514,7 +514,7 @@ public class PrinterService {
         // FIXME: 2017/9/18 zyd add for set Z travel -s
         slicingProfile.setZTravel(200);
         // FIXME: 2017/9/18 zyd add for set Z travel -e
-		slicingProfile.setParameterEnabled(true);
+		slicingProfile.setParameterEnabled(false);
 		slicingProfile.setDetectionEnabled(true);
 
 		currentConfiguration.setSlicingProfile(slicingProfile);
